@@ -1,490 +1,265 @@
 import sqlite3
-import os
-from pathlib import Path
-
 
 class DatabaseHelper:
     _instance = None
-    _database = None
+    _database_name = "lince_data.db"
 
+    # Implementación del patrón Singleton para asegurar una única instancia
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(DatabaseHelper, cls).__new__(cls)
+            cls._instance.conn = sqlite3.connect(cls._database_name, check_same_thread=False)
+
+            # Esto permite que los resultados de las consultas sean como diccionarios
+            cls._instance.conn.row_factory = sqlite3.Row
+
+            cls._instance._init_db()
         return cls._instance
 
-    def __init__(self):
-        if self._database is None:
-            self._database = self.init_db()
+    def _init_db(self):
+        """Inicializa el esquema de la base de datos si no existe."""
+        cursor = self.conn.cursor()
 
-    def get_connection(self):
-        """Obtiene la conexión a la base de datos"""
-        return self._database
-
-    def init_db(self):
-        """Inicializa la base de datos y crea las tablas"""
-        documents_path = Path.home() / "Documents"
-        db_path = documents_path / "Migracion.db"
-
-        documents_path.mkdir(exist_ok=True)
-
-        conn = sqlite3.connect(str(db_path))
-        conn.execute("PRAGMA foreign_keys = ON")
-
-        self.create_tables(conn)
-        return conn
-
-    def create_tables(self, conn):
-        """Crea todas las tablas necesarias"""
-        tables = [
-            '''
+        # Se agrupan todas las sentencias CREATE TABLE para ejecutarlas una sola vez.
+        script = '''
             CREATE TABLE IF NOT EXISTS Campus (
-                ID_Campus TEXT(50) PRIMARY KEY,
-                Nombre TEXT(100) NOT NULL,
-                Estado TEXT(50) NOT NULL
-            )
-            ''',
-            '''
+                ID_Campus TEXT(50) PRIMARY KEY, Nombre TEXT(100) NOT NULL, Estado TEXT(50) NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS Carrera (
-                ID_Carrera TEXT(50) PRIMARY KEY,
-                Nombre TEXT(100) NOT NULL,
-                Estado TEXT(50) NOT NULL
-            )
-            ''',
-            '''
+                ID_Carrera TEXT(50) PRIMARY KEY, Nombre TEXT(100) NOT NULL, Estado TEXT(50) NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS Usuario (
-                ID_Usuario TEXT(50) PRIMARY KEY,
-                ID_Campus TEXT(100) NOT NULL,
-                ID_Carrera TEXT(50) NOT NULL,
-                FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera),
-                FOREIGN KEY (ID_Campus) REFERENCES Campus(ID_Campus)
-            )
-            ''',
-            '''
+                ID_Usuario TEXT(50) PRIMARY KEY, ID_Campus TEXT(100) NOT NULL, ID_Carrera TEXT(50) NOT NULL,
+                FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera), FOREIGN KEY (ID_Campus) REFERENCES Campus(ID_Campus)
+            );
             CREATE TABLE IF NOT EXISTS Carrera_Campus (
-                ID_Carrera_Campus TEXT(50) PRIMARY KEY,
-                ID_Carrera TEXT(50) NOT NULL,
-                ID_Campus TEXT(50) NOT NULL,
-                FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera),
-                FOREIGN KEY (ID_Campus) REFERENCES Campus(ID_Campus)
-            )
-            ''',
-            '''
+                ID_Carrera_Campus TEXT(50) PRIMARY KEY, ID_Carrera TEXT(50) NOT NULL, ID_Campus TEXT(50) NOT NULL,
+                FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera), FOREIGN KEY (ID_Campus) REFERENCES Campus(ID_Campus)
+            );
             CREATE TABLE IF NOT EXISTS Area (
-                ID_Area TEXT(50) PRIMARY KEY,
-                Nombre TEXT(100) NOT NULL,
-                Estado TEXT(50) NOT NULL,
-                ID_Carrera TEXT(50) NOT NULL,
+                ID_Area TEXT(50) PRIMARY KEY, Nombre TEXT(100) NOT NULL, Estado TEXT(50) NOT NULL, ID_Carrera TEXT(50) NOT NULL,
                 FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera)
-            )
-            ''',
-            '''
+            );
             CREATE TABLE IF NOT EXISTS Tema (
-                ID_Tema TEXT(50) PRIMARY KEY,
-                Nombre TEXT(100) NOT NULL,
-                ID_Area TEXT(50) NOT NULL,
-                Estado TEXT(50) NOT NULL,
+                ID_Tema TEXT(50) PRIMARY KEY, Nombre TEXT(100) NOT NULL, ID_Area TEXT(50) NOT NULL, Estado TEXT(50) NOT NULL,
                 FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area)
-            )
-            ''',
-            '''
+            );
             CREATE TABLE IF NOT EXISTS Video (
-                ID_Video TEXT(50) PRIMARY KEY,
-                Nombre TEXT(100) NOT NULL,
-                Descripción TEXT(255) NOT NULL,
-                URL_Video TEXT(255) NOT NULL,
-                Duración INTEGER NOT NULL,
-                Visualizaciones INTEGER NOT NULL,
-                Cantidad_Likes INTEGER NOT NULL,
-                Cantidad_Dislikes INTEGER NOT NULL,
-                Estado TEXT(50) NOT NULL,
-                ID_Area TEXT(50) NOT NULL,
+                ID_Video TEXT(50) PRIMARY KEY, Nombre TEXT(100) NOT NULL, Descripción TEXT(255) NOT NULL, URL_Video TEXT(255) NOT NULL,
+                Duración INTEGER NOT NULL, Visualizaciones INTEGER NOT NULL, Cantidad_Likes INTEGER NOT NULL, Cantidad_Dislikes INTEGER NOT NULL,
+                Estado TEXT(50) NOT NULL, ID_Area TEXT(50) NOT NULL,
                 FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area)
-            )
-            ''',
-            '''
+            );
             CREATE TABLE IF NOT EXISTS Comentario (
-                ID_Comentario TEXT(50) PRIMARY KEY,
-                Comentario TEXT(255) NOT NULL,
-                Fecha DATE NOT NULL,
-                Estado TEXT(50) NOT NULL,
-                ID_Usuario TEXT(50) NOT NULL,
-                ID_Video TEXT(50) NOT NULL,
-                FOREIGN KEY (ID_Usuario) REFERENCES Usuario(ID_Usuario),
-                FOREIGN KEY (ID_Video) REFERENCES Video(ID_Video)
-            )
-            ''',
-            '''
+                ID_Comentario TEXT(50) PRIMARY KEY, Comentario TEXT(255) NOT NULL, Fecha DATE NOT NULL, Estado TEXT(50) NOT NULL,
+                ID_Usuario TEXT(50) NOT NULL, ID_Video TEXT(50) NOT NULL,
+                FOREIGN KEY (ID_Usuario) REFERENCES Usuario(ID_Usuario), FOREIGN KEY (ID_Video) REFERENCES Video(ID_Video)
+            );
             CREATE TABLE IF NOT EXISTS Reaccion (
-                ID_Reaccion TEXT(50) PRIMARY KEY,
-                Tipo TEXT(255) NOT NULL,
-                Fecha DATE NOT NULL,
-                Estado TEXT(50) NOT NULL,
-                ID_Video TEXT(50) NOT NULL,
-                ID_Usuario TEXT(50) NOT NULL,
-                FOREIGN KEY (ID_Video) REFERENCES Video(ID_Video),
-                FOREIGN KEY (ID_Usuario) REFERENCES Usuario(ID_Usuario)
-            )
-            ''',
-            '''
+                ID_Reaccion TEXT(50) PRIMARY KEY, Tipo TEXT(255) NOT NULL, Fecha DATE NOT NULL, Estado TEXT(50) NOT NULL,
+                ID_Video TEXT(50) NOT NULL, ID_Usuario TEXT(50) NOT NULL,
+                FOREIGN KEY (ID_Video) REFERENCES Video(ID_Video), FOREIGN KEY (ID_Usuario) REFERENCES Usuario(ID_Usuario)
+            );
             CREATE TABLE IF NOT EXISTS Simulador (
-                ID_Simulador TEXT(50) PRIMARY KEY,
-                Longitud INTEGER NOT NULL,
-                Estado TEXT(50) NOT NULL,
-                ID_Carrera TEXT(50) NOT NULL,
-                ID_Area TEXT(50) NOT NULL,
+                ID_Simulador TEXT(50) PRIMARY KEY, Longitud INTEGER NOT NULL, Estado TEXT(50) NOT NULL,
+                ID_Carrera TEXT(50) NOT NULL, ID_Area TEXT(50) NOT NULL,
                 FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera)
-            )
-            ''',
-            '''
+            );
             CREATE TABLE IF NOT EXISTS Resultado (
-                ID_Resultado TEXT(50) PRIMARY KEY,
-                Calificacion INTEGER NOT NULL,
-                Tiempo INTEGER NOT NULL,
-                Fecha DATE NOT NULL,
-                ID_Tema TEXT(50) NOT NULL,
-                ID_Usuario TEXT(50) NOT NULL,
-                ID_Simulador TEXT(50) NOT NULL,
-                FOREIGN KEY (ID_Tema) REFERENCES Tema(ID_Tema),
-                FOREIGN KEY (ID_Usuario) REFERENCES Usuario(ID_Usuario),
+                ID_Resultado TEXT(50) PRIMARY KEY, Calificacion INTEGER NOT NULL, Tiempo INTEGER NOT NULL, Fecha DATE NOT NULL,
+                ID_Tema TEXT(50) NOT NULL, ID_Usuario TEXT(50) NOT NULL, ID_Simulador TEXT(50) NOT NULL,
+                FOREIGN KEY (ID_Tema) REFERENCES Tema(ID_Tema), FOREIGN KEY (ID_Usuario) REFERENCES Usuario(ID_Usuario),
                 FOREIGN KEY (ID_Simulador) REFERENCES Simulador(ID_Simulador)
-            )
-            ''',
-            '''
+            );
             CREATE TABLE IF NOT EXISTS Pregunta (
-                ID_Pregunta TEXT(50) PRIMARY KEY,
-                Pregunta TEXT(255) NOT NULL,
-                Opcion_A TEXT(255) NOT NULL,
-                Opcion_B TEXT(255) NOT NULL,
-                Opcion_C TEXT(255) NOT NULL,
-                Opcion_Correcta TEXT(255) NOT NULL,
-                Comentario TEXT(255) NOT NULL,
-                Estado TEXT(50) NOT NULL,
-                ID_Video TEXT(50),
-                ID_Area TEXT(50) NOT NULL,
-                ID_Tema TEXT(50),
-                FOREIGN KEY (ID_Video) REFERENCES Video(ID_Video),
-                FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area),
+                ID_Pregunta TEXT(50) PRIMARY KEY, Pregunta TEXT(255) NOT NULL, Opcion_A TEXT(255) NOT NULL, Opcion_B TEXT(255) NOT NULL,
+                Opcion_C TEXT(255) NOT NULL, Opcion_Correcta TEXT(255) NOT NULL, Comentario TEXT(255) NOT NULL, Estado TEXT(50) NOT NULL,
+                ID_Video TEXT(50), ID_Area TEXT(50) NOT NULL, ID_Tema TEXT(50),
+                FOREIGN KEY (ID_Video) REFERENCES Video(ID_Video), FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area),
                 FOREIGN KEY (ID_Tema) REFERENCES Tema(ID_Tema)
-            )
-            ''',
-            '''
+            );
             CREATE TABLE IF NOT EXISTS Sopa (
-                ID_Sopa TEXT(50) PRIMARY KEY,
-                Cantidad_Palabras INTEGER NOT NULL,
-                Estado TEXT(50) NOT NULL,
-                ID_Area TEXT(50) NOT NULL,
-                ID_Carrera TEXT(50) NOT NULL,
-                FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera),
-                FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area)
-            )
-            ''',
-            '''
+                ID_Sopa TEXT(50) PRIMARY KEY, Cantidad_Palabras INTEGER NOT NULL, Estado TEXT(50) NOT NULL,
+                ID_Area TEXT(50) NOT NULL, ID_Carrera TEXT(50) NOT NULL,
+                FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera), FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area)
+            );
             CREATE TABLE IF NOT EXISTS Crucigrama (
-                ID_Crucigrama TEXT(50) PRIMARY KEY,
-                Cantidad_Palabras INTEGER NOT NULL,
-                Estado TEXT(50) NOT NULL,
-                ID_Area TEXT(50) NOT NULL,
-                ID_Carrera TEXT(50) NOT NULL,
-                FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera),
-                FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area)
-            )
-            ''',
-            '''
+                ID_Crucigrama TEXT(50) PRIMARY KEY, Cantidad_Palabras INTEGER NOT NULL, Estado TEXT(50) NOT NULL,
+                ID_Area TEXT(50) NOT NULL, ID_Carrera TEXT(50) NOT NULL,
+                FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera), FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area)
+            );
             CREATE TABLE IF NOT EXISTS Palabra (
-                ID_Palabra TEXT(50) PRIMARY KEY,
-                Longitud INTEGER NOT NULL,
-                Palabra TEXT(100) NOT NULL,
-                Descripción TEXT(255) NOT NULL,
-                Estado TEXT(50) NOT NULL,
-                ID_Area TEXT(50) NOT NULL,
-                ID_Sopa TEXT(50),
-                ID_Crucigrama TEXT(50),
-                FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area),
-                FOREIGN KEY (ID_Sopa) REFERENCES Sopa(ID_Sopa),
+                ID_Palabra TEXT(50) PRIMARY KEY, Longitud INTEGER NOT NULL, Palabra TEXT(100) NOT NULL, Descripción TEXT(255) NOT NULL,
+                Estado TEXT(50) NOT NULL, ID_Area TEXT(50) NOT NULL, ID_Sopa TEXT(50), ID_Crucigrama TEXT(50),
+                FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area), FOREIGN KEY (ID_Sopa) REFERENCES Sopa(ID_Sopa),
                 FOREIGN KEY (ID_Crucigrama) REFERENCES Crucigrama(ID_Crucigrama)
-            )
-            '''
-        ]
+            );
+        '''
+        cursor.executescript(script)
+        self.conn.commit()
+        cursor.close()
 
-        for table in tables:
-            conn.execute(table)
+    def _execute_query(self, query, params=(), fetch_one=False):
+        """Método genérico para ejecutar consultas SELECT."""
+        cursor = self.conn.cursor()
+        cursor.execute(query, params)
+        if fetch_one:
+            result = cursor.fetchone()
+            return dict(result) if result else None
+        # Por defecto, devuelve todos los resultados (fetchall)
+        results = cursor.fetchall()
+        return [dict(row) for row in results]
 
-        conn.commit()
+    def _execute_modification(self, query, params=()):
+        """Método genérico para ejecutar INSERT, UPDATE, DELETE."""
+        with self.conn:
+            self.conn.execute(query, params)
 
-    # MÉTODOS DE INSERCIÓN
-    async def insert_campus(self, campus):
-        conn = self.get_connection()
-        conn.execute(
-            "INSERT OR REPLACE INTO Campus (ID_Campus, Nombre, Estado) VALUES (?, ?, ?)",
-            (campus['ID_Campus'], campus['Nombre'], campus['Estado'])
-        )
-        conn.commit()
+    # --- Métodos Genéricos para Insert y Get ---
 
-    async def insert_carrera(self, carrera):
-        conn = self.get_connection()
-        conn.execute(
-            "INSERT OR REPLACE INTO Carrera (ID_Carrera, Nombre, Estado) VALUES (?, ?, ?)",
-            (carrera['ID_Carrera'], carrera['Nombre'], carrera['Estado'])
-        )
-        conn.commit()
+    def insert_data(self, table_name, data):
+        """Inserta un diccionario de datos. Reemplaza si la PK ya existe."""
+        columns = ', '.join(data.keys())
+        placeholders = ', '.join(['?'] * len(data))
+        query = f"INSERT OR REPLACE INTO {table_name} ({columns}) VALUES ({placeholders})"
+        self._execute_modification(query, tuple(data.values()))
 
-    async def insert_carrera_campus(self, carrera_campus):
-        conn = self.get_connection()
-        conn.execute(
-            "INSERT OR REPLACE INTO Carrera_Campus (ID_Carrera_Campus, ID_Carrera, ID_Campus) VALUES (?, ?, ?)",
-            (carrera_campus['ID_Carrera_Campus'], carrera_campus['ID_Carrera'], carrera_campus['ID_Campus'])
-        )
-        conn.commit()
+    def get_all_data(self, table_name):
+        """Obtiene todos los registros de una tabla."""
+        return self._execute_query(f"SELECT * FROM {table_name}")
 
-    async def insert_area(self, area):
-        conn = self.get_connection()
-        conn.execute(
-            "INSERT OR REPLACE INTO Area (ID_Area, Nombre, Estado, ID_Carrera) VALUES (?, ?, ?, ?)",
-            (area['ID_Area'], area['Nombre'], area['Estado'], area['ID_Carrera'])
-        )
-        conn.commit()
+    # --- Métodos de la App (Traducción 1 a 1) ---
 
-    async def insert_video(self, video):
-        conn = self.get_connection()
-        conn.execute(
-            """INSERT OR REPLACE INTO Video 
-            (ID_Video, Nombre, Descripción, URL_Video, Duración, Visualizaciones, Cantidad_Likes, Cantidad_Dislikes, Estado, ID_Area) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (video['ID_Video'], video['Nombre'], video['Descripción'], video['URL_Video'],
-             video['Duración'], video['Visualizaciones'], video['Cantidad_Likes'],
-             video['Cantidad_Dislikes'], video['Estado'], video['ID_Area'])
-        )
-        conn.commit()
+    def insert_or_update_usuario(self, id_usuario, id_campus, id_carrera):
+        user = self._execute_query("SELECT ID_Usuario FROM Usuario WHERE ID_Usuario = ?", (id_usuario,), fetch_one=True)
+        if user:
+            query = "UPDATE Usuario SET ID_Campus = ?, ID_Carrera = ? WHERE ID_Usuario = ?"
+            self._execute_modification(query, (id_campus, id_carrera, id_usuario))
+        else:
+            data = {'ID_Usuario': id_usuario, 'ID_Campus': id_campus, 'ID_Carrera': id_carrera}
+            self.insert_data('Usuario', data)
 
-    async def insert_pregunta(self, pregunta):
-        conn = self.get_connection()
-        conn.execute(
-            """INSERT OR REPLACE INTO Pregunta 
-            (ID_Pregunta, Pregunta, Opcion_A, Opcion_B, Opcion_C, Opcion_Correcta, Comentario, Estado, ID_Video, ID_Area, ID_Tema) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (pregunta['ID_Pregunta'], pregunta['Pregunta'], pregunta['Opcion_A'],
-             pregunta['Opcion_B'], pregunta['Opcion_C'], pregunta['Opcion_Correcta'],
-             pregunta['Comentario'], pregunta['Estado'], pregunta['ID_Video'],
-             pregunta['ID_Area'], pregunta['ID_Tema'])
-        )
-        conn.commit()
+    def get_usuario(self):
+        return self.get_all_data('Usuario')
 
-    async def insert_tema(self, tema):
-        conn = self.get_connection()
-        conn.execute(
-            "INSERT OR REPLACE INTO Tema (ID_Tema, Nombre, ID_Area, Estado) VALUES (?, ?, ?, ?)",
-            (tema['ID_Tema'], tema['Nombre'], tema['ID_Area'], tema['Estado'])
-        )
-        conn.commit()
+    def palabra_crucigrama(self, id_crucigrama):
+        query = "SELECT Palabra, Descripción FROM Palabra WHERE ID_Crucigrama = ? ORDER BY RANDOM() LIMIT 1"
+        result = self._execute_query(query, (id_crucigrama,), fetch_one=True)
+        if not result:
+            raise Exception('No se encontró una palabra activa')
+        return {'palabra': result['Palabra'], 'descripcion': result['Descripción']}
 
-    async def insert_comentario(self, comentario):
-        conn = self.get_connection()
-        conn.execute(
-            """INSERT OR REPLACE INTO Comentario 
-            (ID_Comentario, Comentario, Fecha, Estado, ID_Usuario, ID_Video) 
-            VALUES (?, ?, ?, ?, ?, ?)""",
-            (comentario['ID_Comentario'], comentario['Comentario'], comentario['Fecha'],
-             comentario['Estado'], comentario['ID_Usuario'], comentario['ID_Video'])
-        )
-        conn.commit()
+    def get_nombres_carrera_por_id_campus(self, id_campus):
+        query = """
+            SELECT C.Nombre FROM Carrera C
+            JOIN Carrera_Campus CC ON C.ID_Carrera = CC.ID_Carrera
+            WHERE CC.ID_Campus = ?
+        """
+        results = self._execute_query(query, (id_campus,))
+        return [row['Nombre'] for row in results]
 
-    async def insert_simulador(self, simulador):
-        conn = self.get_connection()
-        conn.execute(
-            """INSERT OR REPLACE INTO Simulador 
-            (ID_Simulador, Longitud, Estado, ID_Carrera, ID_Area) 
-            VALUES (?, ?, ?, ?, ?)""",
-            (simulador['ID_Simulador'], simulador['Longitud'], simulador['Estado'],
-             simulador['ID_Carrera'], simulador['ID_Area'])
-        )
-        conn.commit()
+    def get_videos_by_id_area(self, area_id):
+        return self._execute_query("SELECT * FROM Video WHERE ID_Area = ?", (area_id,))
 
-    async def insert_crucigrama(self, crucigrama):
-        conn = self.get_connection()
-        conn.execute(
-            """INSERT OR REPLACE INTO Crucigrama 
-            (ID_Crucigrama, Cantidad_Palabras, Estado, ID_Area, ID_Carrera) 
-            VALUES (?, ?, ?, ?, ?)""",
-            (crucigrama['ID_Crucigrama'], crucigrama['Cantidad_Palabras'], crucigrama['Estado'],
-             crucigrama['ID_Area'], crucigrama['ID_Carrera'])
-        )
-        conn.commit()
+    def get_simulador_by_id_carrera(self, carrera_id):
+        return self._execute_query("SELECT * FROM Simulador WHERE ID_Carrera = ?", (carrera_id,))
 
-    async def insert_sopa(self, sopa):
-        conn = self.get_connection()
-        conn.execute(
-            """INSERT OR REPLACE INTO Sopa 
-            (ID_Sopa, Cantidad_Palabras, Estado, ID_Area, ID_Carrera) 
-            VALUES (?, ?, ?, ?, ?)""",
-            (sopa['ID_Sopa'], sopa['Cantidad_Palabras'], sopa['Estado'],
-             sopa['ID_Area'], sopa['ID_Carrera'])
-        )
-        conn.commit()
+    def get_sopa_by_id_carrera(self, carrera_id):
+        return self._execute_query("SELECT * FROM Sopa WHERE ID_Carrera = ?", (carrera_id,))
 
-    async def insert_palabra(self, palabra):
-        conn = self.get_connection()
-        conn.execute(
-            """INSERT OR REPLACE INTO Palabra 
-            (ID_Palabra, Longitud, Palabra, Descripción, Estado, ID_Area, ID_Sopa, ID_Crucigrama) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            (palabra['ID_Palabra'], palabra['Longitud'], palabra['Palabra'], palabra['Descripción'],
-             palabra['Estado'], palabra['ID_Area'], palabra['ID_Sopa'], palabra['ID_Crucigrama'])
-        )
-        conn.commit()
+    def get_crucigrama_by_id_carrera(self, carrera_id):
+        return self._execute_query("SELECT * FROM Crucigrama WHERE ID_Carrera = ?", (carrera_id,))
 
-    async def insert_resultado(self, resultado):
-        conn = self.get_connection()
-        conn.execute(
-            """INSERT OR REPLACE INTO Resultado 
-            (ID_Resultado, Calificacion, Tiempo, Fecha, ID_Tema, ID_Usuario, ID_Simulador) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (resultado['ID_Resultado'], resultado['Calificacion'], resultado['Tiempo'], resultado['Fecha'],
-             resultado['ID_Tema'], resultado['ID_Usuario'], resultado['ID_Simulador'])
-        )
-        conn.commit()
+    def get_nombre_area_by_id_area(self, id_area):
+        result = self._execute_query("SELECT Nombre FROM Area WHERE ID_Area = ?", (id_area,), fetch_one=True)
+        return result['Nombre'] if result else None
 
-    # MÉTODOS DE CONSULTA (GET ALL)
-    async def get_campus(self):
-        conn = self.get_connection()
-        cursor = conn.execute("SELECT * FROM Campus")
-        columns = [description[0] for description in cursor.description]
-        return [dict(zip(columns, row)) for row in cursor.fetchall()]
+    def get_palabras_por_sopa(self, id_sopa):
+        results = self._execute_query("SELECT Palabra FROM Palabra WHERE ID_Sopa = ?", (id_sopa,))
+        return [row['Palabra'] for row in results]
 
-    async def get_carrera(self):
-        conn = self.get_connection()
-        cursor = conn.execute("SELECT * FROM Carrera")
-        columns = [description[0] for description in cursor.description]
-        return [dict(zip(columns, row)) for row in cursor.fetchall()]
+    def get_palabras_por_crucigrama(self, id_crucigrama):
+        results = self._execute_query("SELECT Palabra FROM Palabra WHERE ID_Crucigrama = ?", (id_crucigrama,))
+        return [row['Palabra'] for row in results]
 
-    async def get_carrera_campus(self):
-        conn = self.get_connection()
-        cursor = conn.execute("SELECT * FROM Carrera_Campus")
-        columns = [description[0] for description in cursor.description]
-        return [dict(zip(columns, row)) for row in cursor.fetchall()]
+    def get_preguntas_by_id_area(self, area_id):
+        return self._execute_query("SELECT * FROM Pregunta WHERE ID_Area = ?", (area_id,))
 
-    async def get_video(self):
-        conn = self.get_connection()
-        cursor = conn.execute("SELECT * FROM Video")
-        columns = [description[0] for description in cursor.description]
-        return [dict(zip(columns, row)) for row in cursor.fetchall()]
+    def get_preguntas_por_id_area_activo(self, id_area):
+        query = """
+            SELECT ID_Pregunta, Pregunta, Opcion_A, Opcion_B, Opcion_Correcta, Comentario, ID_Tema 
+            FROM Pregunta 
+            WHERE ID_Area = ? AND Estado = ? AND ID_Tema != ?
+        """
+        return self._execute_query(query, (id_area, 'Activo', 'No aplica'))
 
-    async def get_area(self):
-        conn = self.get_connection()
-        cursor = conn.execute("SELECT * FROM Area")
-        columns = [description[0] for description in cursor.description]
-        return [dict(zip(columns, row)) for row in cursor.fetchall()]
-
-    async def get_pregunta(self):
-        conn = self.get_connection()
-        cursor = conn.execute("SELECT * FROM Pregunta")
-        columns = [description[0] for description in cursor.description]
-        return [dict(zip(columns, row)) for row in cursor.fetchall()]
-
-    async def get_comentario(self):
-        conn = self.get_connection()
-        cursor = conn.execute("SELECT * FROM Comentario")
-        columns = [description[0] for description in cursor.description]
-        return [dict(zip(columns, row)) for row in cursor.fetchall()]
-
-    async def get_simulador(self):
-        conn = self.get_connection()
-        cursor = conn.execute("SELECT * FROM Simulador")
-        columns = [description[0] for description in cursor.description]
-        return [dict(zip(columns, row)) for row in cursor.fetchall()]
-
-    async def get_crucigrama(self):
-        conn = self.get_connection()
-        cursor = conn.execute("SELECT * FROM Crucigrama")
-        columns = [description[0] for description in cursor.description]
-        return [dict(zip(columns, row)) for row in cursor.fetchall()]
-
-    async def get_sopa(self):
-        conn = self.get_connection()
-        cursor = conn.execute("SELECT * FROM Sopa")
-        columns = [description[0] for description in cursor.description]
-        return [dict(zip(columns, row)) for row in cursor.fetchall()]
-
-    async def get_palabra(self):
-        conn = self.get_connection()
-        cursor = conn.execute("SELECT * FROM Palabra")
-        columns = [description[0] for description in cursor.description]
-        return [dict(zip(columns, row)) for row in cursor.fetchall()]
-
-    async def get_usuario(self):
-        conn = self.get_connection()
-        cursor = conn.execute("SELECT * FROM Usuario")
-        columns = [description[0] for description in cursor.description]
-        return [dict(zip(columns, row)) for row in cursor.fetchall()]
-
-    async def get_tema(self):
-        conn = self.get_connection()
-        cursor = conn.execute("SELECT * FROM Tema")
-        columns = [description[0] for description in cursor.description]
-        return [dict(zip(columns, row)) for row in cursor.fetchall()]
-
-    async def get_resultado(self):
-        conn = self.get_connection()
-        cursor = conn.execute("SELECT * FROM Resultado")
-        columns = [description[0] for description in cursor.description]
-        return [dict(zip(columns, row)) for row in cursor.fetchall()]
-
-    # MÉTODOS ESPECÍFICOS PARA LA APLICACIÓN
-    async def get_nombres_carrera_por_id_campus(self, id_campus):
-        conn = self.get_connection()
-
-        cursor = conn.execute(
-            "SELECT ID_Carrera FROM Carrera_Campus WHERE ID_Campus = ?",
-            (id_campus,)
-        )
-        resultados = cursor.fetchall()
-
-        if not resultados:
-            return []
-
-        nombres_carreras = []
-        for resultado in resultados:
-            id_carrera = resultado[0]
-            cursor_carrera = conn.execute(
-                "SELECT Nombre FROM Carrera WHERE ID_Carrera = ?",
-                (id_carrera,)
-            )
-            carrera_result = cursor_carrera.fetchone()
-            if carrera_result:
-                nombres_carreras.append(carrera_result[0])
-
-        return nombres_carreras
-
-    async def get_id_carrera_by_nombre(self, nombre_carrera):
-        conn = self.get_connection()
-        cursor = conn.execute(
-            "SELECT ID_Carrera FROM Carrera WHERE Nombre = ?",
-            (nombre_carrera,)
-        )
-        resultado = cursor.fetchone()
+    def guardar_calificacion_por_tema(self, id_usuario, id_tema, calificacion, id_simulador, tiempo, fecha,
+                                      id_resultado):
+        params = (id_usuario, id_tema, id_simulador)
+        resultado = self._execute_query(
+            "SELECT * FROM Resultado WHERE ID_Usuario = ? AND ID_Tema = ? AND ID_Simulador = ?", params, fetch_one=True)
 
         if resultado:
-            return resultado[0]
+            query = "UPDATE Resultado SET Calificacion = ?, Tiempo = ? WHERE ID_Usuario = ? AND ID_Tema = ? AND ID_Simulador = ?"
+            self._execute_modification(query, (calificacion, tiempo) + params)
         else:
+            data = {
+                'ID_Resultado': id_resultado, 'Calificacion': calificacion, 'Tiempo': tiempo,
+                'Fecha': fecha, 'ID_Tema': id_tema, 'ID_Usuario': id_usuario, 'ID_Simulador': id_simulador
+            }
+            self.insert_data('Resultado', data)
+
+    def get_nombres_temas_por_ids(self, ids_tema):
+        if not ids_tema: return {}
+        placeholders = ','.join(['?'] * len(ids_tema))
+        query = f"SELECT ID_Tema, Nombre FROM Tema WHERE ID_Tema IN ({placeholders})"
+        results = self._execute_query(query, tuple(ids_tema))
+        return {row['ID_Tema']: row['Nombre'] for row in results}
+
+    def get_comments_by_id_video(self, video_id):
+        return self._execute_query("SELECT * FROM Comentario WHERE ID_Video = ?", (video_id,))
+
+    def get_video_data_by_id_video(self, video_id):
+        return self._execute_query("SELECT * FROM Video WHERE ID_Video = ?", (video_id,))
+
+    def get_id_carrera_by_nombre(self, nombre_carrera):
+        result = self._execute_query("SELECT ID_Carrera FROM Carrera WHERE Nombre = ?", (nombre_carrera,),
+                                     fetch_one=True)
+        if not result:
             raise Exception('Carrera no encontrada')
+        return result['ID_Carrera']
 
-    async def insert_or_update_usuario(self, id_usuario, id_campus, id_carrera):
-        conn = self.get_connection()
+    def get_preguntas_por_id_video(self, id_video):
+        query = "SELECT Pregunta, Opcion_A, Opcion_B, Opcion_Correcta, Comentario FROM Pregunta WHERE ID_Video = ?"
+        return self._execute_query(query, (id_video,))
 
-        cursor = conn.execute(
-            "SELECT * FROM Usuario WHERE ID_Usuario = ?",
-            (id_usuario,)
-        )
-        existe = cursor.fetchone()
+    def get_areas_id_carrera(self, id_carrera):
+        return self._execute_query("SELECT ID_Area, Nombre FROM Area WHERE ID_Carrera = ?", (id_carrera,))
 
-        if existe:
-            conn.execute(
-                "UPDATE Usuario SET ID_Campus = ?, ID_Carrera = ? WHERE ID_Usuario = ?",
-                (id_campus, id_carrera, id_usuario)
-            )
-        else:
-            conn.execute(
-                "INSERT INTO Usuario (ID_Usuario, ID_Campus, ID_Carrera) VALUES (?, ?, ?)",
-                (id_usuario, id_campus, id_carrera)
-            )
+    def get_campus_by_id(self, id_campus):
+        result = self._execute_query("SELECT * FROM Campus WHERE ID_Campus = ?", (id_campus,), fetch_one=True)
+        if not result:
+            raise Exception('Campus no encontrado')
+        return result
 
-        conn.commit()
+    def get_carrera_by_id(self, id_carrera):
+        result = self._execute_query("SELECT * FROM Carrera WHERE ID_Carrera = ?", (id_carrera,), fetch_one=True)
+        if not result:
+            raise Exception('Carrera no encontrada')
+        return result
+
+    def incrementar_visualizacion(self, video_id):
+        query = "UPDATE Video SET Visualizaciones = Visualizaciones + 1 WHERE ID_Video = ?"
+        self._execute_modification(query, (video_id,))
+
+
+# Ejemplo de cómo usar la clase:
+if __name__ == '__main__':
+    db = DatabaseHelper()  # Se crea la instancia (y la bd si no existe)
+
+    # Ejemplo de inserción
+    # db.insert_data('Campus', {'ID_Campus': 'C01', 'Nombre': 'Campus Central', 'Estado': 'Activo'})
+
+    # Ejemplo de consulta
+    # all_campus = db.get_all_data('Campus')
+    # print(all_campus)

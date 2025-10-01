@@ -1,147 +1,124 @@
 import flet as ft
-from widgets.button_campus_widget import CampusButton
 from database.database import DatabaseHelper
-from screens.welcome_section.seleccion_carrera_screen import DetallesCampusScreen
+from widgets.button_campus_widget import CampusButton
 
 
-class SeleccionCampusScreen:
-    def __init__(self, page: ft.Page):
-        self.page = page
-        self.db = DatabaseHelper()
-        self.campus = []
+# UserControl es el equivalente a un StatefulWidget en Flet.
+# Nos permite crear componentes con estado interno y ciclo de vida.
+class SeleccionCampusControl(ft.UserControl):
+    def __init__(self, on_next):
+        super().__init__()
+        self.on_next_callback = on_next
+        self.db_helper = DatabaseHelper()
+        self.campus_list = []
         self.selected_campus_index = None
-        self.view = self.create_view()
-        self.load_campus()
 
-    def create_view(self):
-        """Crea la vista de selección de campus"""
-        self.title_text = ft.Text(
-            "¿A qué campus perteneces?",
-            size=24,
-            weight=ft.FontWeight.BOLD,
-        )
+    # did_mount se llama una vez cuando el control se añade a la página.
+    # Es el equivalente a initState en Flutter.
+    def did_mount(self):
+        self.page.run_task(self._fetch_campus)
 
-        self.loading_indicator = ft.ProgressRing()
-        self.campus_grid = ft.GridView(
-            expand=True,
-            runs_count=2,
-            max_extent=200,
+    async def _fetch_campus(self):
+        # Obtenemos los campus de la BD
+        data = self.db_helper.get_all_data('Campus')
+        if data:
+            self.campus_list = data
+
+        # self.update() es el setState() de Flet.
+        # Le dice a Flet que vuelva a dibujar este control.
+        self.update()
+
+    def _on_campus_tapped(self, e):
+        # e.control.data contiene el índice que le asignamos a cada tarjeta.
+        self.selected_campus_index = e.control.data
+        self.update()
+
+    # build es el método que dibuja la UI del control.
+    def build(self):
+        if not self.campus_list:
+            # Mostramos un indicador de carga mientras se obtienen los datos.
+            return ft.Column(
+                [ft.ProgressRing()],
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                expand=True
+            )
+
+        # Creamos la grilla de campus
+        campus_grid = ft.GridView(
+            expand=1,
+            runs_count=2,  # Equivalente a crossAxisCount: 2
+            max_extent=250,
             child_aspect_ratio=2.0,
             spacing=10,
             run_spacing=10,
         )
 
-        self.next_button = CampusButton(
-            label="Siguiente",
-            on_click=self.on_next_pressed,
-            is_selected=False
-        ).build()
-
-        return ft.View(
-            route="/campus",
-            controls=[
-                ft.AppBar(title=ft.Text("Selecciona tu Campus")),
+        # Llenamos la grilla con los datos
+        for i, campus in enumerate(self.campus_list):
+            is_selected = (i == self.selected_campus_index)
+            campus_grid.controls.append(
                 ft.Container(
-                    content=ft.Column([
-                        ft.Container(
-                            content=self.title_text,
-                            padding=16
-                        ),
-                        ft.Container(
-                            content=self.loading_indicator,
-                            expand=True,
-                            alignment=ft.alignment.center
-                        ),
-                        ft.Container(
-                            content=self.next_button,
-                            padding=ft.padding.symmetric(horizontal=16, vertical=20),
-                            alignment=ft.alignment.center
-                        )
-                    ]),
-                    expand=True
+                    data=i,  # Guardamos el índice para saber cuál se seleccionó
+                    on_click=self._on_campus_tapped,
+                    bgcolor=ft.colors.BLUE_900 if is_selected else ft.colors.WHITE,
+                    border_radius=ft.border_radius.all(10),
+                    alignment=ft.alignment.center,
+                    content=ft.Text(
+                        value=campus['Nombre'],
+                        color=ft.colors.WHITE if is_selected else ft.colors.BLACK,
+                        size=18,
+                    )
+                )
+            )
+
+        return ft.Column(
+            controls=[
+                ft.Container(
+                    content=ft.Text(
+                        "¿A qué campus perteneces?",
+                        size=24,
+                        weight=ft.FontWeight.BOLD
+                    ),
+                    padding=ft.padding.all(16)
+                ),
+                campus_grid,
+                ft.Container(
+                    content=CampusButton(
+                        label="Siguiente",
+                        on_click=lambda e: self.on_next_callback(self.selected_campus_index, self.campus_list),
+                        is_selected=(self.selected_campus_index is not None)
+                    ),
+                    alignment=ft.alignment.center,
+                    padding=ft.padding.symmetric(vertical=20, horizontal=16)
                 )
             ]
         )
 
-    async def load_campus(self):
-        """Carga la lista de campus desde la base de datos"""
-        try:
-            self.campus = await self.db.get_campus()
-            self.update_campus_grid()
-        except Exception as e:
-            print(f"Error cargando campus: {e}")
-            error_text = ft.Text("Error cargando campus", color=ft.colors.RED)
-            self.page.controls[0].controls[1].content = error_text
-        self.page.update()
 
-    def update_campus_grid(self):
-        """Actualiza el grid de campus con los datos cargados"""
-        self.campus_grid.controls.clear()
-
-        for i, campus in enumerate(self.campus):
-            card = self.create_campus_card(campus, i)
-            self.campus_grid.controls.append(card)
-
-        self.page.controls[0].controls[1].content = self.campus_grid
-        self.page.update()
-
-    def create_campus_card(self, campus, index):
-        """Crea una tarjeta de campus"""
-        is_selected = index == self.selected_campus_index
-        bg_color = ft.colors.BLUE_900 if is_selected else ft.colors.WHITE
-        text_color = ft.colors.WHITE if is_selected else ft.colors.BLACK
-
-        return ft.Container(
-            content=ft.Card(
-                content=ft.Container(
-                    content=ft.Text(
-                        campus["Nombre"],
-                        size=18,
-                        color=text_color,
-                        text_align=ft.TextAlign.CENTER,
-                        weight=ft.FontWeight.BOLD
-                    ),
-                    alignment=ft.alignment.center,
-                    padding=20,
-                ),
-                color=bg_color,
-            ),
-            on_click=lambda e, idx=index: self.on_campus_selected(idx)
-        )
-
-    def on_campus_selected(self, index):
-        """Maneja la selección de un campus"""
-        self.selected_campus_index = index
-
-        # Actualizar estado del botón
-        self.next_button = CampusButton(
-            label="Siguiente",
-            on_click=self.on_next_pressed,
-            is_selected=True
-        ).build()
-
-        # Actualizar vista
-        self.update_campus_grid()
-
-    async def on_next_pressed(self, e):
-        """Maneja el clic en el botón Siguiente"""
-        if self.selected_campus_index is None:
-            self.page.show_snack_bar(
-                ft.SnackBar(content=ft.Text("Por favor selecciona un campus antes de continuar."))
-            )
+# --- Función principal de la Vista ---
+def SeleccionCampusScreenView(page: ft.Page):
+    async def on_next_pressed(selected_index, campus_list):
+        if selected_index is None:
             return
 
-        # Guardar selección en almacenamiento local
-        selected_campus = self.campus[self.selected_campus_index]
-        self.page.client_storage.set("idCampus", selected_campus["ID_Campus"])
-        self.page.client_storage.set("campusNombre", selected_campus["Nombre"])
+        selected_campus = campus_list[selected_index]
+        campus_id = selected_campus['ID_Campus']
 
-        # Navegar a la pantalla de selección de carrera (IMPORTACIÓN DIRECTA)
-        carrera_screen = DetallesCampusScreen(  # ← SIN importación dentro del método
-            self.page,
-            nombre=selected_campus["Nombre"],
-            idCampus=selected_campus["ID_Campus"]
-        )
+        # Guardamos el ID del campus en el almacenamiento del cliente
+        page.client_storage.set("idCampus", campus_id)
 
-        self.page.views.append(carrera_screen.view)
-        self.page.update()
+        # Navegamos a la siguiente pantalla usando el enrutamiento
+        page.go(f"/seleccion-carrera/{campus_id}")
+
+    campus_control = SeleccionCampusControl(on_next=on_next_pressed)
+
+    return ft.View(
+        route="/seleccion-campus",
+        appbar=ft.AppBar(
+            title=ft.Text("Selecciona tu Campus")
+        ),
+        controls=[
+            campus_control
+        ]
+    )

@@ -1,25 +1,33 @@
 import flet as ft
 
-class CampusButton:
-    def __init__(self, label: str, on_click=None, is_selected=False):
-        self.label = label
-        self.on_click = on_click
-        self.is_selected = is_selected
+def CampusButton(label: str, on_click, is_selected: bool = False):
+    """
+    Crea un botón cuyo estilo cambia si algo ha sido seleccionado.
 
-    def build(self):
-        # Colores exactos según tu código Dart
-        bg_color = ft.colors.BLUE_900 if self.is_selected else ft.colors.WHITE
-        text_color = ft.colors.WHITE if self.is_selected else "#0D47A1"  # Color azul exacto
+    Args:
+        label: El texto que mostrará el botón.
+        on_click: La función a ejecutar al hacer clic.
+        is_selected: Si es True, el botón se muestra en su estilo "activo".
+    """
+    return ft.ElevatedButton(
+        on_click=on_click,
+        content=ft.Text(
+            value=label,
+            size=16,
+            weight=ft.FontWeight.BOLD,
+            # Lógica condicional para el color del texto
+            color=ft.colors.WHITE if is_selected else ft.colors.BLUE_900,
+        ),
+        style=ft.ButtonStyle(
+            # Lógica condicional para el color de fondo
+            bgcolor=ft.colors.BLUE_900 if is_selected else ft.colors.WHITE,
 
-        return ft.ElevatedButton(
-            text=self.label,
-            on_click=self.on_click,
-            style=ft.ButtonStyle(
-                color=text_color,
-                bgcolor=bg_color,
-                padding=ft.padding.symmetric(vertical=12, horizontal=24),
-                side=ft.BorderSide(color="#0D47A1", width=1),  # Borde azul
-                shape=ft.RoundedRectangleBorder(radius=8),
-            ),
-            disabled=not self.is_selected
-        )
+            # El borde siempre es azul
+            side=ft.BorderSide(color=ft.colors.BLUE_900),
+
+            shape=ft.RoundedRectangleBorder(radius=8),
+            padding=ft.padding.symmetric(vertical=12, horizontal=24),
+        ),
+        # Desactivamos el botón si nada ha sido seleccionado
+        disabled=not is_selected
+    )
