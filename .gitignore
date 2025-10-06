@@ -1,0 +1,61 @@
+# =======================================================
+# Archivos de Entorno Virtual de Python
+# =======================================================
+/venv/
+.env
+.venv
+ENV/
+env/
+env.bak
+venv.bak
+
+
+# =======================================================
+# Archivos generados por Python
+# =======================================================
+*.pyc
+__pycache__/
+.pytest_cache/
+.coverage
+
+
+# =======================================================
+# Archivos generados por Flutter y Dart
+# =======================================================
+# Archivos de Dart
+.dart_tool/
+.packages
+pubspec.lock
+
+# Archivos de Build
+/build/
+
+# Logs y diagnósticos
+*.log
+coverage/
+
+# Archivos de herramientas
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Para evitar conflictos de usuario en archivos de configuración
+/ios/Flutter/ephemeral/
+/windows/flutter/ephemeral/
+/linux/flutter/ephemeral/
+/macos/flutter/ephemeral/
+
+# =======================================================
+# Archivos del Sistema Operativo
+# =======================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
