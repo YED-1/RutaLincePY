@@ -1,5 +1,5 @@
 import flet as ft
-from screens.welcome_section.seleccion_campus_screen import SeleccionCampusScreen
+from src.screens.welcome_section.seleccion_campus_screen import SeleccionCampusScreen
 
 class WelcomeScreen(ft.Column):
     def __init__(self, page: ft.Page):

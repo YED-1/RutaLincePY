@@ -1,5 +1,5 @@
 import flet as ft
-from screens.welcome_section.bienvenida_screen import WelcomeScreen
+from src.screens.welcome_section.bienvenida_screen import WelcomeScreen
 
 
 def main(page: ft.Page):

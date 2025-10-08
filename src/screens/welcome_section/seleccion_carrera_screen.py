@@ -1,34 +1,5 @@
 import flet as ft
-import time
-
-
-# --- Simulación de tu clase DatabaseHelper ---
-# Reemplaza esto con la importación de tu propia clase de base de datos
-class DatabaseHelper:
-    def get_nombres_carrera_por_id_campus(self, id_campus):
-        print(f"Buscando carreras para el campus: {id_campus}")
-        time.sleep(1)  # Simula una pequeña demora de la red o base de datos
-        if id_campus == "C1":
-            return ["Ingeniería de Software", "Diseño Gráfico", "Administración", "Gastronomía"]
-        elif id_campus == "C2":
-            return ["Medicina", "Enfermería", "Derecho"]
-        else:
-            return []
-
-    def get_id_carrera_by_nombre(self, nombre_carrera):
-        ids = {
-            "Ingeniería de Software": "ISC-01",
-            "Diseño Gráfico": "DG-01",
-            "Administración": "ADM-01",
-            "Gastronomía": "GAST-01",
-            "Medicina": "MED-01",
-            "Enfermería": "ENF-01",
-            "Derecho": "DER-01",
-        }
-        return ids.get(nombre_carrera, "ID-GENERICO")
-
-
-# --- Fin de la simulación ---
+from database.database import DatabaseHelper
 
 
 class SeleccionCarreraScreen(ft.Column):
@@ -38,11 +9,12 @@ class SeleccionCarreraScreen(ft.Column):
         self.id_campus = id_campus
         self.campus_nombre = campus_nombre
 
+        # Instanciamos el helper para usar la base de datos
         self.db_helper = DatabaseHelper()
         self.selected_carrera_nombre = None
 
         # --- Controles de la UI ---
-        # Equivalente a RichText con TextSpan
+        # Título con el nombre del campus que viene de la BD
         self.title = ft.Text(
             spans=[
                 ft.TextSpan("¿Qué carrera estudias en el campus "),
@@ -72,7 +44,7 @@ class SeleccionCarreraScreen(ft.Column):
             text="Siguiente", disabled=True, on_click=self._on_next_pressed
         )
 
-        # Estructura principal de la pantalla
+        # Estructura principal
         self.controls = [
             ft.Container(content=self.title, padding=16),
             self.content_area,
@@ -85,19 +57,20 @@ class SeleccionCarreraScreen(ft.Column):
 
     def did_mount(self):
         self.page.appbar = ft.AppBar(title=ft.Text("Selecciona tu Carrera"), bgcolor=ft.Colors.GREY_200)
-        self._fetch_carreras()
+        self._fetch_carreras()  # Llama a la función que lee la BD
         self.page.update()
 
     def _fetch_carreras(self):
+        # Llama al método del helper para obtener las carreras del campus seleccionado
         carreras_list = self.db_helper.get_nombres_carrera_por_id_campus(self.id_campus)
 
         if not carreras_list:
-            self.content_area.content = ft.Text("No se encontraron carreras para este campus.",
-                                                text_align=ft.TextAlign.CENTER)
+            self.content_area.content = ft.Text("No se encontraron carreras para este campus.",text_align=ft.TextAlign.CENTER)
         else:
             self.carreras_grid.controls.clear()
             for nombre in carreras_list:
                 self.carreras_grid.controls.append(self.create_carrera_card(nombre))
+            # Reemplaza el indicador de carga con el grid lleno de datos
             self.content_area.content = self.carreras_grid
 
         self.update()
@@ -128,13 +101,14 @@ class SeleccionCarreraScreen(ft.Column):
 
     def _on_next_pressed(self, e):
         if self.selected_carrera_nombre:
+            # Obtiene el ID de la carrera desde la BD
             id_carrera = self.db_helper.get_id_carrera_by_nombre(self.selected_carrera_nombre)
 
-            # Guardamos en el almacenamiento del cliente (equivalente a SharedPreferences)
+            # Guarda el ID en el almacenamiento del cliente
             self.page.client_storage.set("idCarrera", id_carrera)
             print(f"ID de Carrera guardado: {id_carrera}")
 
-            # Navegamos a la pantalla de inicio
+            # Navega a la siguiente pantalla (por ejemplo, InicioScreen)
             self.page.appbar = None
             self.page.clean()
             # self.page.add(InicioScreen(self.page, self.id_campus, id_carrera))
