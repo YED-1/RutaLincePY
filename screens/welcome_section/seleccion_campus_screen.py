@@ -1,12 +1,15 @@
 import flet as ft
 
+# 1. IMPORTAMOS LA PANTALLA A LA QUE VAMOS A NAVEGAR
+from screens.welcome_section.seleccion_carrera_screen import SeleccionCarreraScreen
+
 
 class SeleccionCampusScreen(ft.Column):
     def __init__(self, page: ft.Page):
-        super().__init__(expand=True)  # Inicializamos la columna base
+        super().__init__(expand=True)
         self.page = page
 
-        # Definimos las variables y controles, pero aún no los mostramos
+        # Definimos las variables y controles
         self.db_helper = None
         self.campus_list = []
         self.selected_campus_id = None
@@ -35,13 +38,13 @@ class SeleccionCampusScreen(ft.Column):
     # did_mount se ejecuta DESPUÉS de que el control se añade a la página
     def did_mount(self):
         self.page.appbar = ft.AppBar(
-            title=ft.Text("Selecciona tu Campus"), bgcolor=ft.Colors.WHITE30
+            title=ft.Text("Selecciona tu Campus"), bgcolor=ft.Colors.GREY_200
         )
-        # Ahora sí, cargamos los datos
         self._fetch_campus()
         self.page.update()
 
     def _fetch_campus(self):
+        # Simulación de la llamada a la base de datos
         self.campus_list = [
             {'ID_Campus': 'C1', 'Nombre': 'Campus Central'},
             {'ID_Campus': 'C2', 'Nombre': 'Campus Norte'},
@@ -52,7 +55,6 @@ class SeleccionCampusScreen(ft.Column):
         for campus in self.campus_list:
             card = self.create_campus_card(campus)
             self.campus_grid.controls.append(card)
-        # Ya no se necesita self.update() aquí, porque se llama en did_mount
 
     def create_campus_card(self, campus):
         return ft.GestureDetector(
@@ -80,10 +82,24 @@ class SeleccionCampusScreen(ft.Column):
 
     def _on_next_pressed(self, e):
         if self.selected_campus_id:
-            print(f"ID de Campus guardado: {self.selected_campus_id}")
+            # 2. LÓGICA DE NAVEGACIÓN ACTUALIZADA
+
+            # Buscamos el nombre del campus para pasarlo a la siguiente pantalla
+            campus_nombre_seleccionado = ""
+            for campus in self.campus_list:
+                if campus['ID_Campus'] == self.selected_campus_id:
+                    campus_nombre_seleccionado = campus['Nombre']
+                    break
+
             self.page.appbar = None
             self.page.clean()
-            # self.page.add(SeleccionCarreraScreen(self.page))
+
+            # Llamamos a la pantalla de selección de carrera con los datos necesarios
+            self.page.add(SeleccionCarreraScreen(
+                self.page,
+                id_campus=self.selected_campus_id,
+                campus_nombre=campus_nombre_seleccionado
+            ))
             self.page.update()
         else:
             self.page.snack_bar = ft.SnackBar(

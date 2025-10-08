@@ -1,0 +1,21 @@
+[project]
+name = "Ruta Lince"
+version = "0.1.0"
+description = ""
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "Jiménez Alvear Joshua Yedreick", email = "jajosh56@gmail.com" }
+]
+dependencies = [
+  "flet"
+]
+
+[tool.flet]
+org = "com.mycompany"
+product = "MyApp"
+company = "My Company"
+copyright = "Copyright (C) 2025 by My Company"
+
+[tool.flet.app]
+path = "src"
