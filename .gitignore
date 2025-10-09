@@ -9,7 +9,7 @@ env/
 env.bak
 venv.bak
 .db
-
+pyproject.toml
 
 # =======================================================
 # Archivos generados por Python

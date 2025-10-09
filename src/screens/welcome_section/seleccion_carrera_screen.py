@@ -1,4 +1,5 @@
 import flet as ft
+from src.screens.inicio_screen import InicioScreen
 from database.database import DatabaseHelper
 
 
@@ -111,5 +112,5 @@ class SeleccionCarreraScreen(ft.Column):
             # Navega a la siguiente pantalla (por ejemplo, InicioScreen)
             self.page.appbar = None
             self.page.clean()
-            # self.page.add(InicioScreen(self.page, self.id_campus, id_carrera))
+            self.page.add(InicioScreen(self.page, self.id_campus, id_carrera))
             self.page.update()
