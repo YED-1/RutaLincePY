@@ -4,6 +4,7 @@ from database.database import DatabaseHelper
 from src.widgets.nav_bar_widget import create_nav_bar
 
 
+
 class InicioScreen(ft.Column):
     def __init__(self, page: ft.Page, id_carrera: str, id_campus: str):
         super().__init__(expand=True)

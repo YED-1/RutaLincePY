@@ -56,21 +56,11 @@ class CreditosScreen(ft.Column):
                         ),
                         create_person_tile(name='Aguilar Cabrera Donovan Yosef'),
                         create_person_tile(name='Ayala Rayón Omar'),
-                        create_person_tile(name='Baeza Bernardes Aiker'),
+                        create_person_tile(name='Baeza Bernardes Aiker'), # Pendiente
                         create_person_tile(name='Jiménez Alvear Joshua Yedreick'),
                         create_person_tile(name='Luna Ocampo Alejandro'),
-                        create_person_tile(name='Márquez González Adrián Aleksei'),
-                        create_person_tile(name='Quiroz Mora Raúl Alejandro'),
-                        ft.Container(height=20),
-
-                        # Documentador
-                        ft.Text(
-                            'Documentador:',
-                            size=20,
-                            weight=ft.FontWeight.BOLD,
-                            text_align=ft.TextAlign.CENTER,
-                        ),
-                        create_person_tile(name='Valentina Monserrat Prado Alpizar'),
+                        create_person_tile(name='Márquez González Adrián Aleksei'), #Pendiente
+                        create_person_tile(name='Quiroz Mora Raúl Alejandro'), #Parte IOS
                         ft.Container(height=20),
 
                         # Tester

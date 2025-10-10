@@ -1,11 +1,9 @@
 import flet as ft
 from database.database import DatabaseHelper
-from src.widgets.nav_bar_widget import create_nav_bar
-# Importamos las pantallas a las que vamos a navegar
-from src.screens.welcome_section.seleccion_campus_screen import SeleccionCampusScreen
-from src.screens.welcome_section.seleccion_carrera_screen import SeleccionCarreraScreen
-from src.screens.creditos_screen import CreditosScreen
 
+
+# Nota: Las importaciones de las pantallas de navegación se han movido
+# a los métodos correspondientes para evitar importaciones circulares.
 
 class AjustesScreen(ft.Column):
     def __init__(self, page: ft.Page, id_carrera: str, id_campus: str, id_usuario: str):
@@ -48,6 +46,7 @@ class AjustesScreen(ft.Column):
         ]
 
     def did_mount(self):
+        from src.widgets.nav_bar_widget import create_nav_bar
         # Creamos una AppBar personalizada
         self.page.appbar = ft.AppBar(
             automatically_imply_leading=False,
@@ -74,9 +73,11 @@ class AjustesScreen(ft.Column):
             self.nombre_carrera = carrera['Nombre']
             # Actualizamos el texto del título en la AppBar
             self.appbar_title.value = f"{self.nombre_campus} - {self.nombre_carrera}"
-            self.update()  # Actualizamos la pantalla para que se vea el cambio
+            self.update()
 
     def _cambiar_carrera(self, e):
+        from src.screens.welcome_section.seleccion_carrera_screen import SeleccionCarreraScreen
+
         self.page.client_storage.remove("idCarrera")
         self.page.clean()
         self.page.appbar = None
@@ -86,6 +87,8 @@ class AjustesScreen(ft.Column):
         ))
 
     def _cambiar_campus(self, e):
+        from src.screens.welcome_section.seleccion_campus_screen import SeleccionCampusScreen
+
         self.page.client_storage.remove("idCarrera")
         self.page.client_storage.remove("idCampus")
         self.page.clean()
@@ -94,5 +97,7 @@ class AjustesScreen(ft.Column):
         self.page.add(SeleccionCampusScreen(self.page))
 
     def _ver_creditos(self, e):
+        from src.screens.creditos_screen import CreditosScreen
+
         self.page.clean()
         self.page.add(CreditosScreen(self.page))
