@@ -1,5 +1,5 @@
 import flet as ft
-from src.database.database import DatabaseHelper
+from database.database import DatabaseHelper
 from src.screens.sopa_de_letras_screen import SopaDeLetrasScreen
 
 
@@ -49,7 +49,7 @@ class SeleccionarSopaScreen(ft.Column):
             content=ft.Container(
                 padding=16,
                 border_radius=12,
-                border=ft.border.all(2, ft.colors.BLUE_900),
+                border=ft.border.all(2, ft.Colors.BLUE_900),
                 content=ft.Column(
                     cross_alignment=ft.CrossAxisAlignment.START,
                     controls=[
@@ -57,9 +57,9 @@ class SeleccionarSopaScreen(ft.Column):
                             f"{sopa['NombreArea']} - {sopa['ID_Area']}",
                             size=23,
                             weight=ft.FontWeight.BOLD,
-                            color=ft.colors.BLUE_900
+                            color=ft.Colors.BLUE_900
                         ),
-                        ft.Divider(height=4, color=ft.colors.TEAL_100, thickness=2),
+                        ft.Divider(height=4, color=ft.Colors.TEAL_100, thickness=2),
                         ft.Text(
                             f"Sopa: {sopa['ID_Sopa']}",
                             size=18,

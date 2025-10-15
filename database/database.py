@@ -133,3 +133,11 @@ class DatabaseHelper:
            """
         cursor.execute(query, (id_carrera,))
         return [dict(row) for row in cursor.fetchall()]
+
+    def get_palabras_por_sopa(self, id_sopa):
+        """Obtiene la lista de palabras para una sopa de letras específica."""
+        cursor = self.conn.cursor()
+        # Asumiendo que tienes una tabla 'Palabra' con una columna 'ID_Sopa'
+        cursor.execute("SELECT Palabra FROM Palabra WHERE ID_Sopa = ?", (id_sopa,))
+        rows = cursor.fetchall()
+        return [row['Palabra'] for row in rows]

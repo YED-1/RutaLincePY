@@ -1,5 +1,4 @@
 import flet as ft
-# 1. Importas la pantalla real de Ajustes
 from src.screens.ajustes_screen import AjustesScreen
 
 # --- Pantallas Temporales (para que la navegación funcione) ---
