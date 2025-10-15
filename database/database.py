@@ -21,7 +21,8 @@ class DatabaseHelper:
             '''CREATE TABLE IF NOT EXISTS Usuario (ID_Usuario TEXT PRIMARY KEY, ID_Campus TEXT, ID_Carrera TEXT, FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera), FOREIGN KEY (ID_Campus) REFERENCES Campus(ID_Campus))''',
             '''CREATE TABLE IF NOT EXISTS Carrera_Campus (ID_Carrera_Campus TEXT PRIMARY KEY, ID_Carrera TEXT, ID_Campus TEXT, FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera), FOREIGN KEY (ID_Campus) REFERENCES Campus(ID_Campus))''',
             '''CREATE TABLE IF NOT EXISTS Area (ID_Area TEXT PRIMARY KEY, Nombre TEXT, Estado TEXT, ID_Carrera TEXT, FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera))''',
-            '''CREATE TABLE IF NOT EXISTS Video (ID_Video TEXT PRIMARY KEY, Nombre TEXT, Descripción TEXT, URL_Video TEXT, Visualizaciones INTEGER DEFAULT 0, Estado TEXT, ID_Area TEXT, FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area))'''
+            '''CREATE TABLE IF NOT EXISTS Video (ID_Video TEXT PRIMARY KEY, Nombre TEXT, Descripción TEXT, URL_Video TEXT, Visualizaciones INTEGER DEFAULT 0, Estado TEXT, ID_Area TEXT, FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area))''',
+            '''CREATE TABLE IF NOT EXISTS Crucigrama (ID_Crucigrama TEXT PRIMARY KEY, Cantidad_Palabras INTEGER, Estado TEXT, ID_Area TEXT, ID_Carrera TEXT, FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera), FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area))'''
             # ... y el resto de tus tablas ...
         ]
 
@@ -102,3 +103,33 @@ class DatabaseHelper:
         cursor.execute("SELECT * FROM Carrera WHERE ID_Carrera = ?", (id_carrera,))
         row = cursor.fetchone()
         return dict(row) if row else None
+
+    def get_crucigramas_con_area_by_id_carrera(self, id_carrera):
+        """
+        Obtiene los crucigramas de una carrera y une el nombre del área
+        en una sola consulta optimizada.
+        """
+        cursor = self.conn.cursor()
+        query = """
+            SELECT cr.*, ar.Nombre as NombreArea
+            FROM Crucigrama cr
+            JOIN Area ar ON cr.ID_Area = ar.ID_Area
+            WHERE cr.ID_Carrera = ? AND cr.Estado = 'Activo'
+        """
+        cursor.execute(query, (id_carrera,))
+        return [dict(row) for row in cursor.fetchall()]
+
+    def get_sopas_con_area_by_id_carrera(self, id_carrera):
+        """
+        Obtiene las sopas de letras de una carrera y une el nombre del área
+        en una sola consulta optimizada.
+        """
+        cursor = self.conn.cursor()
+        query = """
+               SELECT s.*, ar.Nombre as NombreArea
+               FROM Sopa s
+               JOIN Area ar ON s.ID_Area = ar.ID_Area
+               WHERE s.ID_Carrera = ? AND s.Estado = 'Activo'
+           """
+        cursor.execute(query, (id_carrera,))
+        return [dict(row) for row in cursor.fetchall()]

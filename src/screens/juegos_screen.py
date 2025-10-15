@@ -1,9 +1,7 @@
 import flet as ft
 from src.widgets.nav_bar_widget import create_nav_bar
-
-# Importamos las pantallas a las que vamos a navegar
-#from src.screens.seleccionar_sopa_screen import SeleccionarSopaScreen
-#from src.screens.seleccionar_crucigrama_screen import SeleccionarCrucigramaScreen
+from src.screens.seleccionar_sopa_screen import SeleccionarSopaScreen
+from src.screens.seleccionar_crucigrama_screen import SeleccionarCrucigramaScreen
 
 class JuegosScreen(ft.Column):
     def __init__(self, page: ft.Page, id_carrera: str, id_campus: str, id_usuario: str):
