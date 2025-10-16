@@ -1,6 +1,5 @@
 import flet as ft
 from src.database.database import DatabaseHelper
-from src.screens.crucigrama_screen import CrucigramaScreen
 
 
 class SeleccionarCrucigramaScreen(ft.Column):
@@ -10,7 +9,6 @@ class SeleccionarCrucigramaScreen(ft.Column):
         self.id_carrera = id_carrera
         self.db_helper = DatabaseHelper()
 
-        # Contenedor para manejar el estado de carga (como un FutureBuilder)
         self.loading_view = ft.Column(
             [ft.ProgressRing(), ft.Text("Cargando palabretas...")],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -48,7 +46,7 @@ class SeleccionarCrucigramaScreen(ft.Column):
             content=ft.Container(
                 padding=16,
                 border_radius=12,
-                border=ft.border.all(2, ft.Colors.BLUE_900),
+                border=ft.border.all(2, ft.colors.BLUE_900),
                 content=ft.Column(
                     cross_alignment=ft.CrossAxisAlignment.START,
                     controls=[
@@ -56,9 +54,9 @@ class SeleccionarCrucigramaScreen(ft.Column):
                             f"{crucigrama['NombreArea']} - {crucigrama['ID_Area']}",
                             size=23,
                             weight=ft.FontWeight.BOLD,
-                            color=ft.Colors.BLUE_900
+                            color=ft.colors.BLUE_900
                         ),
-                        ft.Divider(height=4, color=ft.Colors.TEAL_100, thickness=2),
+                        ft.Divider(height=4, color=ft.colors.TEAL_100, thickness=2),
                         ft.Text(
                             f"Palabreta: {crucigrama['ID_Crucigrama']}",
                             size=18,
@@ -71,6 +69,9 @@ class SeleccionarCrucigramaScreen(ft.Column):
         )
 
     def _on_card_click(self, e):
+        # Importamos la pantalla del juego aquí para evitar importaciones circulares
+        from src.screens.crucigrama_screen import CrucigramaScreen
+
         id_crucigrama = e.control.data
         self.page.clean()
         self.page.add(CrucigramaScreen(self.page, id_crucigrama=id_crucigrama))

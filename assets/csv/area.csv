@@ -1,0 +1,8 @@
+ID_Area,Nombre,Estado,ID_Carrera
+AR1C1,Base de Datos,Activo,CA001
+AR2C1,Redes,Activo,CA001
+AR3C1,Programacion Objetos,Activo,CA001
+AR4C1,Programacion Concurrente,Activo,CA001
+AR1C2,Diseño de sistemas mecatrónicos,Activo,CA002
+AR2C2,Implementación de sistemas mecatrónicos,Activo,CA002
+AR3C2,Integración de tecnologías para sistemas mecatrónicos,Activo,CA002

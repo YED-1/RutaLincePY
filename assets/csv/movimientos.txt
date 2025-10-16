@@ -1,0 +1,27 @@
+1.- Cambiar la palabra "Crucigrama:" por "Palabreta:" en el archivo 
+seleccionar_crucigrama_screen.dart  ------> Linea: 91 
+
+2.- Cambiar tamaño de texto en el archivo sopa_de_letras_screen.dart
+
+3.- En ajustes_screen.dart borrar las lineas:
+ const SizedBox(height: 20),
+            BotonAjustes(
+              icon: const Icon(Icons.group),
+              texto: 'Datos',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => DatosScreen()),
+                );
+              },
+            ),
+
+4.- Borrar de quizdwidget las lineas:
+if (!esOk && (p['Comentario'] as String?) != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    '💡 ${p['Comentario']}',
+                    style: const TextStyle(fontStyle: FontStyle.italic),
+                  ),
+                ), 

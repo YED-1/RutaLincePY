@@ -11,6 +11,7 @@ venv.bak
 .db
 pyproject.toml
 .gitignore
+ruta_lince.db
 
 # =======================================================
 # Archivos generados por Python

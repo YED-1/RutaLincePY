@@ -1,6 +1,6 @@
 import flet as ft
 from src.screens.inicio_screen import InicioScreen
-from database.database import DatabaseHelper
+from src.database.database import DatabaseHelper
 
 
 class SeleccionCarreraScreen(ft.Column):

@@ -1,0 +1,36 @@
+ID_Pregunta,Pregunta,Opcion_A,Opcion_B,Opcion_C,Opcion_Correcta,Comentario,Estado,ID_Video,ID_Area
+PREG1,¿Qué palabra clave inicia un ciclo For en Python?,loop,while,repeat,for,Activo,Video9,AREA??
+PREG2,¿Cuál es la sintaxis correcta de un ciclo For que recorra del 0 al 4?,for i = range(5):,for i in (5):,for i to range(5):,for i in range(5):,Activo,Video9,AREA??
+PREG3,¿Qué error tiene este código? for i in range(5)  print(i),Le falta una comilla,La variable i no está definida,No está indentado correctamente,Le faltan los dos puntos al final del for,Activo,Video9,AREA??
+PREG4,¿Por qué no se recomienda escribir i += 1 dentro de un ciclo For?,Porque genera un error de sintaxis,Porque detiene el ciclo,Porque i no puede modificarse,Porque altera el valor que Python ya está controlando automáticamente,Activo,Video9,AREA??
+PREG5,¿Qué imprime el siguiente código? for i in range(5):  print(i),Solo imprime el número 5,No imprime nada,Imprime del 1 al 5,Imprime del 0 al 4,Activo,Video9,AREA??
+PREG6,¿Qué palabra clave se utiliza para comenzar una condicional en Python?,when,check,condition,if,Activo,Video10,AREA??
+PREG7,¿Qué operador se debe usar para comparar valores en una condición?,=,:=,=>,==,Activo,Video10,AREA??
+PREG8,¿Para qué se utiliza la palabra clave else en una condicional?,Para cerrar el ciclo,Para imprimir siempre un mensaje,Para declarar una nueva variable,Para ejecutar un bloque si ninguna condición anterior se cumple,Video10,AREA??
+PREG9,¿Cuál es el error en el siguiente código? if x = 5:  print(""x es igual a 5""),Falta la indentación en el print,No se usó la palabra clave else,No se puede usar el número 5 en condicionales,Se usó = en lugar de == para comparar,Video10,AREA??
+PREG10,¿Por qué es importante la indentación en Python?,Solo para que el código se vea ordenado,Para que Python lo convierta a pseudocódigo,No es necesaria si el código es corto,Porque define los bloques de código que se ejecutarán,Video10,AREA??
+PREG11,¿Cuál es la palabra clave que se utiliza para iniciar un ciclo While en Python?,loop,repeat,until,while,Video7,AREA??
+PREG12,¿Qué ocurre si no se actualiza la variable de control dentro del ciclo While?,El código se ejecuta solo una vez,El programa imprime un error de sintaxis,El ciclo se detiene inmediatamente,El ciclo puede volverse infinito,Video7,AREA??
+PREG13,¿Cuál de los siguientes es un error lógico en un ciclo While?,Usar la palabra while en mayúsculas,Usar corchetes en lugar de paréntesis,Escribir el ciclo con indentación,No actualizar la variable de control,Video7,AREA??
+PREG14,¿Cuál es la forma correcta de escribir un ciclo While para que no tenga error de sintaxis?,while x < 5 then:,while x < 5 {},while (x < 5),while x < 5:,Video7,AREA??
+PREG15,¿Qué resultado produce este código? x = 0  while x < 5:  print(x)  x += 1,Imprime solo el número 5,No imprime nada,Imprime del 1 al 5,Imprime del 0 al 4,Video7,AREA??
+PREG16,¿Cuál es la finalidad principal de la manufactura?,Construir redes sociales,Diseñar ropa de lujo,Crear videojuegos educativos,Transformar materiales en productos útiles para los consumidores,Video6,AREA??
+PREG17,¿Qué función tiene la programación CNC en la manufactura actual?,Decorar las máquinas herramienta,Aumentar el tamaño de las piezas,Pintar los productos terminados,Automatizar operaciones y lograr precisión y eficiencia,Video6,AREA??
+PREG18,¿Qué hacen los comandos G en programación CNC?,Cambian herramientas automáticamente,Ajustan el volumen del husillo,Encender luces de emergencia,Definen la trayectoria de la herramienta,Video6,AREA??
+PREG19,¿Para qué sirven los comandos M en CNC?,Calibrar sensores ópticos,Establecer la temperatura del husillo,Dibujar planos de diseño,Controlar funciones auxiliares de la máquina,Video6,AREA??
+PREG20,¿Y LA PREGUNTA?,Ajustar la presión del aire,Cambiar la fuente de energía,Seleccionar herramientas específicas,Activar el freno de seguridad,Video6,AREA??
+PREG21,¿Para que son fundamentales los actuadores?,agilizar,profundizar,movilizar,automatizar,Video1,AREA??
+PREG22,¿Cuáles son los tipos más comunes de actuadores?,Solares ó térmicos y mecánicos,Digitales ó analógicos y ópticos,Magnéticos ó acústicos y térmicos,Eléctricos ó hidráulicos y neumáticos,Video1,AREA??
+PREG23,¿Cuál es el tipo de energía que convierten los actuadores electricos?,energía cinética,energía térmica,energía nucelar,energía eléctrica,Video1,AREA??
+PREG24,¿Cómo es que funcionan los actuadores neumáticos?,Con energía solar,Con electricidad,Con vapor de agua,Con aire comprimido,Video1,AREA??
+PREG25,¿En qué tipo de aplicaciones se suelen usar los actuadores hidráulicos?,En relojes inteligentes,En sistemas de iluminación,En juguetes electrónicos,En grúas o equipos de construcción,Video1,AREA??
+PREG26,¿Qué hacen los sensores en los sistemas automatizados?,Producen sonido para alarmas,Transmiten datos sin necesidad de energía,Aumentan la velocidad del sistema automáticamente,Detectan cambios y los convierten en señales eléctricas o digitales,Video5,AREA??
+PREG27,¿Para qué sirve un sensor de proximidad?,Medir niveles de sonido,Detectar colores en objetos,Registrar datos de temperatura,Detectar objetos sin necesidad de contacto,Video5,AREA??
+PREG28,¿Dónde es fundamental un sensor de presión?,En impresoras de papel,En relojes inteligentes,En cámaras digitales,En sistemas hidráulicos y neumáticos,Video5,AREA??
+PREG29,¿Qué miden los sensores ópticos?,Humedad del ambiente,Niveles de batería,Velocidad del viento,Cambios de luz,Video5,AREA??
+PREG30,¿Qué variable mide un sensor de presión?,Nivel de sonido,Temperatura ambiente,Intensidad de luz,Presión de fluidos o gases,Video5,AREA??
+PREG31,¿En qué lenguajes se suelen programar los sistemas electrónicos?,Excel o Word y PowerPoint,SQL o Ruby y Java,HTML o CSS y JavaScript,Ensamblador, C, C++ y Python,Video4,AREA??
+PREG32,¿Qué hacen las estructuras de control en la programación de sistemas electrónicos?,Cambian automáticamente el idioma del sistema,Controlan la batería del microcontrolador,Establecen la hora y fecha,Permiten repetir acciones o tomar decisiones según las entradas,Video4,AREA??
+PREG33,¿Qué son los sistemas embebidos?,Sensores usados únicamente en robots,Equipos de sonido inalámbricos,Computadoras para videojuegos,Dispositivos programados para tareas específicas como controlar temperatura,Video4,AREA??
+PREG34,¿Qué aplicación es un ejemplo de sistema embebido?,Un videojuego en línea,El diseño de una página web,Una red social en el celular,El control de temperatura en un electrodoméstico,Video4,AREA??
+PREG35,¿Cuál es uno de los pasos para programar un sistema electrónico?,Pintar el microcontrolador,Desinstalar el código base,Limpiar las señales digitales,Escribir para luego compilar y cargar el código en el microcontrolador,Video4,AREA??

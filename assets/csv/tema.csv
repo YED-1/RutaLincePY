@@ -1,0 +1,12 @@
+ID_Tema,Nombre,ID_Area,Estado
+TEM01,Sistemas mecánicos,AR1C2,Activo
+TEM02,Sistemas electrónicos analógicos o digitales y de potencia,AR1C2,Activo
+TEM03,Sistemas de automatización y control analógico y digital,AR1C2,Activo
+TEM04,Modelado y simulación de sistemas mecatrónicos,AR1C2,Activo
+TEM05,Tecnologías CAD o CAM y CAE,AR2C2,Activo
+TEM06,Sensores y Actuadores,AR2C2,Activo
+TEM07,Instrumentación de sistemas mecatrónicos,AR2C2,Activo
+TEM08,Programación de sistemas electrónicos,AR2C2,Activo
+TEM09,Planeación y evaluación de proyectos mecatrónicos,AR3C2,Activo
+TEM10,Redes industriales,AR3C2,Activo
+TEM11,Automatización y control industrial,AR3C2,Activo

@@ -1,0 +1,10 @@
+ID_Video,Nombre,Descripción,URL_Video,Duración,Visualizaciones,Cantidad_Likes,Cantidad_Dislikes,Estado,ID_Area
+VID1,Actuadores,Se presentarán los conceptos básicos sobre actuadores como sus tipos ó funcionamiento y sus aplicaciones en sistemas automatizados,Video1,10,10,4,1,Activo,AR2C2
+VID3,Instrumentación,Se presentarán los conceptos básicos de la instrumentación en sistemas mecatrónicos,Video3,10,10,4,1,Activo,AR2C2
+VID4,Programación de Sistemas Eléctricos,Se presentarán los conceptos básicos de la programación de sistemas electrónicos,Video4,10,10,4,1,Activo,AR2C2
+VID5,Sensores,Se presentarán los conceptos básicos de los sensores,Video5,10,10,4,1,Activo,AR2C2
+VID6,Tecnologías CAD o CAM y CAE,Se presentarán los conceptos básicos de la programación CNC,Video6,10,10,4,1,Activo,AR2C2
+VID7,Ciclo While,Se presentarán las condicionales en Python desde su sintaxis hasta ejercicios de errores lógicos y sintaxis,Video7,10,10,4,1,Activo,AR2C2
+VID8,Algoritmos,Se presentarán los conceptos fundamentales de los algoritmos incluyendo su definición y estructura,Video8,10,10,4,1,Activo,AR2C2
+VID9,Ciclo For,Se presentarán las condicionales en Python desde su sintaxis hasta ejercicios de errores lógicos y sintaxis,Video9,10,10,4,1,Activo,AR2C2
+VID10,Condicionales,Se presentarán las condicionales en Python desde su sintaxis hasta ejercicios de errores lógicos y sintaxis,Video10,10,10,4,1,Activo,AR2C2

@@ -1,0 +1,29 @@
+VIDEOS
+
+TFE_Actuadores.mp4------------------------------------------Video1
+TFE_Cadena de suministros.mp4-------------------------------Video2  //No va este
+TFE_ISM_vr1.mp4---------------------------------------------Video3
+TFE_PSE.mp4-------------------------------------------------Video4
+TFE_Sensores_vr2.mp4----------------------------------------Video5
+2.1 Tecnologías CAD CAM CAE - Programación CNC.mp4----------Video6
+Ciclo While.mp4---------------------------------------------Video7
+Algoritmos.mp4----------------------------------------------Video8
+Ciclo For Python.mp4----------------------------------------Video9
+Condicionales Python.mp4------------------------------------Video10
+
+--------------------------------------------------------------------
+
+CSVS
+
+Preguntas_mecatronica (tiene 5 hojas de calculo y abarca 1,3,4,5,6)
+Preguntas_actuadores---------------------------------------Video1
+Preguntas_Intrumentación-----------------------------------Video3
+Preguntas_Progr_sist_elec----------------------------------Video4
+Preguntas_Sensores-----------------------------------------Video5
+Preguntas_ProgCNC   ---------------------------------------Video6
+Preguntas_mecatronica_2daentrega (tiene 3 hojas de calculo)
+-----------------------------------------------------------Video7
+-----------------------------------------------------------Video9
+-----------------------------------------------------------Video10
+
+Faltan: Preguntas Video2, Video8

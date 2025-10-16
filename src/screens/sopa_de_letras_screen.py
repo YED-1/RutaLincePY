@@ -1,6 +1,6 @@
 import flet as ft
 from word_search_generator import WordSearch
-from database.database import DatabaseHelper
+from src.database.database import DatabaseHelper
 import math
 
 

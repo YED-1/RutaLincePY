@@ -1,0 +1,12 @@
+ID_Comentario,Comentario,Fecha,Estado,ID_Usuario,ID_Video
+COM001,Me sirvió mucho este video,2025-04-14,Activo,US001,VID1
+COM002,Contenido de calidadeh,2025-04-14,Activo,US001,VID1
+COM003,¡Qué buen ejemplo!,2025-04-14,Activo,US003,VID2
+COM004,Muy útil para reforzar los temas ,2025-04-14,Activo,US004,VID2
+COM005,Que sencillo de comprender,2025-04-14,Activo,US005,VID3
+COM006,Un tema muy interesante,2025-04-14,Activo,US006,VID3
+COM007,Me ayudó a entender el tema,2025-04-14,Activo,US001,VID4
+COM008,Muy eficiente,2025-04-14,Activo,US002,VID4
+COM009,Excelente explicación,2025-04-14,Activo,US003,VID5
+COM010,Increíble explicación,2025-04-14,Activo,US004,VID5
+COM011,Que padre,2025-04-14,Activo,US005,VID6

@@ -1,0 +1,4 @@
+ID_Simulador,Longitud,Estado,ID_Carrera,ID_Area
+SIM01,50,Activo,CA002,AR1C2
+SIM02,50,Activo,CA002,AR2C2
+SIM03,50,Activo,CA002,AR3C2

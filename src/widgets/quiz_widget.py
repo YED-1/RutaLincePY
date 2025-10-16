@@ -1,5 +1,5 @@
 import flet as ft
-from database.database import DatabaseHelper
+from src.database.database import DatabaseHelper
 import random
 
 

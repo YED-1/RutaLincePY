@@ -1,6 +1,6 @@
 import flet as ft
 import uuid
-from database.database import DatabaseHelper
+from src.database.database import DatabaseHelper
 from src.widgets.comments_widget import CommentsWidget
 
 

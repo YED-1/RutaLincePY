@@ -1,0 +1,25 @@
+ID_Palabra,Longitud,Palabra,Descripción,Estado,ID_Area,ID_Sopa,ID_Crucigrama
+PALB01,6,DISEÑO,Proceso de creación y planificación de sistemas mecatrónicos funcionales.,Activo,AR1C2,SOP01,CRUC01
+PALB02,7,INNOVAR,Aplicación de nuevas ideas para mejorar el rendimiento y eficiencia.,Activo,AR1C2,SOP01,CRUC01
+PALB03,9,PROTOTIPO,Modelo inicial que permite validar conceptos antes de la producción final.,Activo,AR1C2,SOP01,CRUC01
+PALB04,7,PLANEAR,Organizar y estructurar las etapas de un proyecto mecatrónico.,Activo,AR1C2,SOP01,CRUC01
+PALB05,8,DIAGRAMA,Representación gráfica de la estructura o funcionamiento de un sistema mecatrónico.,Activo,AR1C2,SOP02,CRUC02
+PALB06,8,MODELADO,Representación gráfica o matemática de un sistema mecatrónico.,Activo,AR1C2,SOP02,CRUC02
+PALB07,7,CONTROL,Regulación y supervisión de procesos dentro del sistema mecatrónico.,Activo,AR1C2,SOP02,CRUC02
+PALB08,9,OPTIMIZAR,Mejora continua para maximizar la eficiencia y minimizar recursos.,Activo,AR1C2,SOP02,CRUC02
+PALB09,8,INSTALAR,Proceso de montaje y conexión de los componentes del sistema mecatrónico.,Activo,AR2C2,SOP03,CRUC03
+PALB10,9,PROGRAMAR,Desarrollo de códigos y algoritmos para controlar el sistema.,Activo,AR2C2,SOP03,CRUC03
+PALB11,8,INTEGRAR,Unión de hardware y software para el funcionamiento conjunto.,Activo,AR2C2,SOP03,CRUC03
+PALB12,10,CONFIGURAR,Ajuste de parámetros para que el sistema opere correctamente.,Activo,AR2C2,SOP03,CRUC03
+PALB13,7,PRUEBAS,Verificación del funcionamiento correcto y seguro del sistema.,Activo,AR2C2,SOP04,CRUC04
+PALB14,7,AJUSTES,Modificaciones necesarias para alcanzar el rendimiento esperado.,Activo,AR2C2,SOP04,CRUC04
+PALB15,9,CUIDAR,Actividades para conservar y prolongar la vida útil del sistema.,Activo,AR2C2,SOP04,CRUC04
+PALB16,7,VALIDAR,Confirmación de que el sistema cumple con los requisitos establecidos.,Activo,AR2C2,SOP04,CRUC04
+PALB17,9,ELECTRICA,Rama que permite controlar señales eléctricas dentro del sistema.,Activo,AR3C2,SOP05,CRUC05
+PALB18,8,MECANICA,Parte estructural y de movimiento del sistema mecatrónico.,Activo,AR3C2,SOP05,CRUC05
+PALB19,11,PROCESOS,Conjunto de operaciones dentro del sistema mecatrónico.,Activo,AR3C2,SOP05,CRUC05
+PALB20,8,ROBOTICA,Aplicación de sistemas automáticos con capacidades mecánicas y de control.,Activo,AR3C2,SOP05,CRUC05
+PALB21,9,COMUNICAR,Intercambio de información entre diferentes dispositivos o subsistemas.,Activo,AR3C2,SOP06,CRUC06
+PALB22,8,SENSORES,Dispositivos que detectan cambios en el entorno y envían señales.,Activo,AR3C2,SOP06,CRUC06
+PALB23,8,ACTUADOR,Componentes que ejecutan movimientos o acciones en el sistema.,Activo,AR3C2,SOP06,CRUC06
+PALB24,12,SINCRONIZAR,Coordinación precisa entre diferentes tecnologías y procesos.,Activo,AR3C2,SOP06,CRUC06
