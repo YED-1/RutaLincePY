@@ -10,6 +10,7 @@ class Coord:
         self.row = row
         self.col = col
 
+
     def __eq__(self, other):
         return isinstance(other, Coord) and self.row == other.row and self.col == other.col
 

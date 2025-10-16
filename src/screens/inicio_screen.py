@@ -2,7 +2,7 @@ import flet as ft
 import uuid
 from database.database import DatabaseHelper
 from src.widgets.nav_bar_widget import create_nav_bar
-
+from src.widgets.comments_widget import CommentsWidget
 
 
 class InicioScreen(ft.Column):
@@ -22,10 +22,7 @@ class InicioScreen(ft.Column):
 
         # --- Controles de la UI ---
         self.area_tabs = ft.Row(scroll=ft.ScrollMode.AUTO)
-        self.video_player = ft.Video(
-            expand=True,
-            #on_position_changed=self._on_video_update,  # Para contar visualizaciones
-        )
+        self.video_player = ft.Video(expand=True)
         self.video_player.on_position_changed = self._on_video_update
 
         self.video_title = ft.Text(size=26, weight=ft.FontWeight.BOLD)
@@ -50,23 +47,24 @@ class InicioScreen(ft.Column):
 
     def did_mount(self):
         self.page.appbar = None
-
-        # 2. CREAMOS Y ASIGNAMOS LA BARRA DE NAVEGACIÓN A LA PÁGINA
-        self.page.navigation_bar = create_nav_bar(
-            page=self.page,
-            selected_index=0,  # 0 porque estamos en la pantalla de "Inicio"
-            id_carrera=self.id_carrera,
-            id_campus=self.id_campus,
-            id_usuario=self.id_usuario  # Asegúrate de que _save_user_data se llame antes
-        )
-
-        self._initialize_screen()  # Esto carga los datos del video, etc.
-        self.page.update()
+        self._initialize_screen()
+        # La barra de navegación se crea después de tener el id_usuario
 
     def _initialize_screen(self):
         """Método principal para cargar todo en orden."""
-        self._save_user_data() # Importante que esto asigne self.id_usuario
+        self._save_user_data()
+
+        # Ahora que tenemos el id_usuario, creamos la barra de navegación
+        self.page.navigation_bar = create_nav_bar(
+            page=self.page,
+            selected_index=0,
+            id_carrera=self.id_carrera,
+            id_campus=self.id_campus,
+            id_usuario=self.id_usuario
+        )
+
         self._load_areas()
+        self.page.update()
 
     def _get_or_create_user_id(self):
         user_id = self.page.client_storage.get("idUsuario")
@@ -77,6 +75,10 @@ class InicioScreen(ft.Column):
 
     def _save_user_data(self):
         self.id_usuario = self._get_or_create_user_id()
+        # Guardamos los IDs para que otras pantallas puedan recuperarlos
+        self.page.client_storage.set("idCampus", self.id_campus)
+        self.page.client_storage.set("idCarrera", self.id_carrera)
+
         self.db_helper.insert_or_update_usuario(
             id_usuario=self.id_usuario,
             id_campus=self.id_campus,
@@ -107,6 +109,7 @@ class InicioScreen(ft.Column):
     def _load_videos(self):
         if not self.areas:
             self.main_content.content = ft.Text("No hay áreas para esta carrera.")
+            self.update()
             return
 
         area_id = self.areas[self.current_area_index]['ID_Area']
@@ -117,25 +120,32 @@ class InicioScreen(ft.Column):
     def _initialize_video(self):
         if not self.videos:
             self.main_content.content = ft.Text("No hay videos para esta área.")
+            self.update()
             return
 
         self.has_counted_view = False
         video_data = self.videos[self.video_index]
+        video_id = video_data['ID_Video']
 
-        # Asumiendo que tus videos están en assets/videos/
-        video_url = video_data['URL_Video']
-        self.video_player.src = f"/videos/{video_url}.mp4"
+        # Asumiendo que tus videos están en una carpeta 'assets/videos/' en la raíz del proyecto
+        self.video_player.src = f"/videos/{video_data['URL_Video']}.mp4"
 
         self.video_title.value = video_data['Nombre']
         self.video_description.value = video_data['Descripción']
 
-        # Construimos la vista del video
+        # Botón para abrir los comentarios, tal como en el diseño de Flutter
+        comments_button = ft.IconButton(
+            icon=ft.Icons.COMMENT_OUTLINED,
+            tooltip="Ver comentarios y quiz",
+            on_click=lambda e: self._show_comments(video_id)
+        )
+
         video_view = ft.Column(
             [
-                ft.Stack([
-                    self.video_player,
-                    # Aquí podrías añadir un icono de Play/Pause si lo deseas
-                ]),
+                self.video_player,
+                ft.Container(height=10),
+                ft.Row([ft.Text(""), comments_button], alignment=ft.MainAxisAlignment.END),
+                # Alineamos el botón a la derecha
                 ft.Container(height=10),
                 self.video_title,
                 self.video_description,
@@ -144,16 +154,36 @@ class InicioScreen(ft.Column):
                     text="Siguiente Video" if self.video_index < len(self.videos) - 1 else "Volver al Inicio",
                     on_click=self._on_next_video_click,
                     bgcolor=ft.Colors.BLUE_900,
-                    color=ft.Colors.WHITE
+                    color=ft.Colors.WHITE,
+                    width=250,
+                    height=50
                 )
-            ]
+            ],
+            scroll=ft.ScrollMode.ADAPTIVE,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
         self.main_content.content = video_view
         self.video_player.play()
         self.update()
 
+    def _show_comments(self, video_id):
+        """Muestra la hoja de comentarios."""
+        self.page.bottom_sheet = ft.BottomSheet(
+            ft.Container(
+                content=CommentsWidget(
+                    page=self.page,
+                    video_id=video_id,
+                    id_usuario=self.id_usuario
+                ),
+                padding=15,
+                border_radius=ft.border_radius.vertical(top=20),
+                height=self.page.window_height * 0.85
+            )
+        )
+        self.page.bottom_sheet.open = True
+        self.page.update()
+
     def _on_video_update(self, e):
-        # El evento da la posición en milisegundos
         position_seconds = int(e.data) / 1000
         if not self.has_counted_view and position_seconds >= 5:
             self.has_counted_view = True
@@ -163,10 +193,10 @@ class InicioScreen(ft.Column):
 
     def _on_area_tap(self, index):
         self.current_area_index = index
-        # Re-renderizamos los tabs para el efecto de selección
         self._load_areas()
 
     def _on_next_video_click(self, e):
+        self.video_player.pause()
         if self.video_index < len(self.videos) - 1:
             self.video_index += 1
         else:

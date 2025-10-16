@@ -4,6 +4,7 @@ import os
 
 class DatabaseHelper:
     def __init__(self, db_name="ruta_lince.db"):
+        # La base de datos se guardará en la carpeta 'src/database/'
         base_dir = os.path.dirname(os.path.abspath(__file__))
         self.db_path = os.path.join(base_dir, db_name)
         self.conn = None
@@ -21,9 +22,12 @@ class DatabaseHelper:
             '''CREATE TABLE IF NOT EXISTS Usuario (ID_Usuario TEXT PRIMARY KEY, ID_Campus TEXT, ID_Carrera TEXT, FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera), FOREIGN KEY (ID_Campus) REFERENCES Campus(ID_Campus))''',
             '''CREATE TABLE IF NOT EXISTS Carrera_Campus (ID_Carrera_Campus TEXT PRIMARY KEY, ID_Carrera TEXT, ID_Campus TEXT, FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera), FOREIGN KEY (ID_Campus) REFERENCES Campus(ID_Campus))''',
             '''CREATE TABLE IF NOT EXISTS Area (ID_Area TEXT PRIMARY KEY, Nombre TEXT, Estado TEXT, ID_Carrera TEXT, FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera))''',
-            '''CREATE TABLE IF NOT EXISTS Video (ID_Video TEXT PRIMARY KEY, Nombre TEXT, Descripción TEXT, URL_Video TEXT, Visualizaciones INTEGER DEFAULT 0, Estado TEXT, ID_Area TEXT, FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area))''',
-            '''CREATE TABLE IF NOT EXISTS Crucigrama (ID_Crucigrama TEXT PRIMARY KEY, Cantidad_Palabras INTEGER, Estado TEXT, ID_Area TEXT, ID_Carrera TEXT, FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera), FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area))'''
-            # ... y el resto de tus tablas ...
+            '''CREATE TABLE IF NOT EXISTS Video (ID_Video TEXT PRIMARY KEY, Nombre TEXT, Descripción TEXT, URL_Video TEXT, Visualizaciones INTEGER DEFAULT 0, Cantidad_Likes INTEGER DEFAULT 0, Cantidad_Dislikes INTEGER DEFAULT 0, Estado TEXT, ID_Area TEXT, FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area))''',
+            '''CREATE TABLE IF NOT EXISTS Reaccion (ID_Reaccion TEXT PRIMARY KEY, Tipo TEXT, Fecha DATE, Estado TEXT, ID_Video TEXT, ID_Usuario TEXT, FOREIGN KEY (ID_Video) REFERENCES Video(ID_Video), FOREIGN KEY (ID_Usuario) REFERENCES Usuario(ID_Usuario))''',
+            '''CREATE TABLE IF NOT EXISTS Comentario (ID_Comentario TEXT PRIMARY KEY, Comentario TEXT, Fecha DATE, Estado TEXT, ID_Usuario TEXT, ID_Video TEXT, FOREIGN KEY (ID_Usuario) REFERENCES Usuario(ID_Usuario), FOREIGN KEY (ID_Video) REFERENCES Video(ID_Video))''',
+            '''CREATE TABLE IF NOT EXISTS Sopa (ID_Sopa TEXT PRIMARY KEY, Cantidad_Palabras INTEGER, Estado TEXT, ID_Area TEXT, ID_Carrera TEXT, FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera), FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area))''',
+            '''CREATE TABLE IF NOT EXISTS Crucigrama (ID_Crucigrama TEXT PRIMARY KEY, Cantidad_Palabras INTEGER, Estado TEXT, ID_Area TEXT, ID_Carrera TEXT, FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera), FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area))''',
+            '''CREATE TABLE IF NOT EXISTS Palabra (ID_Palabra TEXT PRIMARY KEY, Palabra TEXT, Descripción TEXT, Estado TEXT, ID_Area TEXT, ID_Sopa TEXT, ID_Crucigrama TEXT, FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area), FOREIGN KEY (ID_Sopa) REFERENCES Sopa(ID_Sopa), FOREIGN KEY (ID_Crucigrama) REFERENCES Crucigrama(ID_Crucigrama))'''
         ]
 
         for query in create_table_queries:
@@ -41,12 +45,7 @@ class DatabaseHelper:
     def get_nombres_carrera_por_id_campus(self, id_campus):
         """Obtiene los nombres de las carreras para un campus específico."""
         cursor = self.conn.cursor()
-        query = """
-            SELECT c.Nombre
-            FROM Carrera_Campus cc
-            JOIN Carrera c ON cc.ID_Carrera = c.ID_Carrera
-            WHERE cc.ID_Campus = ? AND c.Estado = 'Activo'
-        """
+        query = "SELECT c.Nombre FROM Carrera_Campus cc JOIN Carrera c ON cc.ID_Carrera = c.ID_Carrera WHERE cc.ID_Campus = ? AND c.Estado = 'Activo'"
         cursor.execute(query, (id_campus,))
         rows = cursor.fetchall()
         return [row['Nombre'] for row in rows]
@@ -63,13 +62,11 @@ class DatabaseHelper:
         cursor = self.conn.cursor()
         cursor.execute("SELECT ID_Usuario FROM Usuario WHERE ID_Usuario = ?", (id_usuario,))
         if cursor.fetchone():
-            cursor.execute("""
-                UPDATE Usuario SET ID_Campus = ?, ID_Carrera = ? WHERE ID_Usuario = ?
-            """, (id_campus, id_carrera, id_usuario))
+            cursor.execute("UPDATE Usuario SET ID_Campus = ?, ID_Carrera = ? WHERE ID_Usuario = ?",
+                           (id_campus, id_carrera, id_usuario))
         else:
-            cursor.execute("""
-                INSERT INTO Usuario (ID_Usuario, ID_Campus, ID_Carrera) VALUES (?, ?, ?)
-            """, (id_usuario, id_campus, id_carrera))
+            cursor.execute("INSERT INTO Usuario (ID_Usuario, ID_Campus, ID_Carrera) VALUES (?, ?, ?)",
+                           (id_usuario, id_campus, id_carrera))
         self.conn.commit()
 
     def get_areas_id_carrera(self, id_carrera):
@@ -105,39 +102,85 @@ class DatabaseHelper:
         return dict(row) if row else None
 
     def get_crucigramas_con_area_by_id_carrera(self, id_carrera):
-        """
-        Obtiene los crucigramas de una carrera y une el nombre del área
-        en una sola consulta optimizada.
-        """
+        """Obtiene los crucigramas de una carrera y une el nombre del área."""
         cursor = self.conn.cursor()
-        query = """
-            SELECT cr.*, ar.Nombre as NombreArea
-            FROM Crucigrama cr
-            JOIN Area ar ON cr.ID_Area = ar.ID_Area
-            WHERE cr.ID_Carrera = ? AND cr.Estado = 'Activo'
-        """
+        query = "SELECT cr.*, ar.Nombre as NombreArea FROM Crucigrama cr JOIN Area ar ON cr.ID_Area = ar.ID_Area WHERE cr.ID_Carrera = ? AND cr.Estado = 'Activo'"
         cursor.execute(query, (id_carrera,))
         return [dict(row) for row in cursor.fetchall()]
 
     def get_sopas_con_area_by_id_carrera(self, id_carrera):
-        """
-        Obtiene las sopas de letras de una carrera y une el nombre del área
-        en una sola consulta optimizada.
-        """
+        """Obtiene las sopas de letras de una carrera y une el nombre del área."""
         cursor = self.conn.cursor()
-        query = """
-               SELECT s.*, ar.Nombre as NombreArea
-               FROM Sopa s
-               JOIN Area ar ON s.ID_Area = ar.ID_Area
-               WHERE s.ID_Carrera = ? AND s.Estado = 'Activo'
-           """
+        query = "SELECT s.*, ar.Nombre as NombreArea FROM Sopa s JOIN Area ar ON s.ID_Area = ar.ID_Area WHERE s.ID_Carrera = ? AND s.Estado = 'Activo'"
         cursor.execute(query, (id_carrera,))
         return [dict(row) for row in cursor.fetchall()]
 
     def get_palabras_por_sopa(self, id_sopa):
         """Obtiene la lista de palabras para una sopa de letras específica."""
         cursor = self.conn.cursor()
-        # Asumiendo que tienes una tabla 'Palabra' con una columna 'ID_Sopa'
         cursor.execute("SELECT Palabra FROM Palabra WHERE ID_Sopa = ?", (id_sopa,))
         rows = cursor.fetchall()
         return [row['Palabra'] for row in rows]
+
+    def get_video_by_id(self, video_id):
+        """Obtiene todos los datos de un video específico."""
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM Video WHERE ID_Video = ?", (video_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+    def get_user_reaction_for_video(self, video_id, user_id):
+        """Obtiene la reacción de un usuario para un video."""
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT Tipo FROM Reaccion WHERE ID_Video = ? AND ID_Usuario = ?", (video_id, user_id))
+        row = cursor.fetchone()
+        return row['Tipo'] if row else None
+
+    def delete_reaction(self, video_id, user_id):
+        """Borra la reacción de un usuario para un video."""
+        cursor = self.conn.cursor()
+        cursor.execute("DELETE FROM Reaccion WHERE ID_Video = ? AND ID_Usuario = ?", (video_id, user_id))
+        self.conn.commit()
+
+    def insert_reaction(self, reaction_id, video_id, user_id, tipo):
+        """Inserta una nueva reacción."""
+        cursor = self.conn.cursor()
+        cursor.execute(
+            "INSERT INTO Reaccion (ID_Reaccion, ID_Video, ID_Usuario, Tipo, Fecha, Estado) VALUES (?, ?, ?, ?, date('now'), 'Activo')",
+            (reaction_id, video_id, user_id, tipo))
+        self.conn.commit()
+
+    def update_video_counter(self, video_id, field, delta):
+        """Actualiza un contador (Likes/Dislikes) de un video."""
+        cursor = self.conn.cursor()
+        if field in ['Cantidad_Likes', 'Cantidad_Dislikes']:
+            cursor.execute(f"UPDATE Video SET {field} = {field} + ? WHERE ID_Video = ?", (delta, video_id))
+            self.conn.commit()
+
+    def get_comments_by_id_video(self, video_id):
+        """Obtiene todos los comentarios para un video, ordenados por fecha."""
+        cursor = self.conn.cursor()
+        cursor.execute(
+            "SELECT * FROM Comentario WHERE ID_Video = ? AND Estado = 'Activo' ORDER BY Fecha DESC",
+            (video_id,)
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+    def add_comment(self, comment_id, video_id, user_id, comment_text):
+        """Inserta un nuevo comentario en la base de datos."""
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            INSERT INTO Comentario (ID_Comentario, Comentario, Fecha, Estado, ID_Usuario, ID_Video)
+            VALUES (?, ?, date('now'), 'Activo', ?, ?)
+        """, (comment_id, comment_text, user_id, video_id))
+        self.conn.commit()
+
+    def get_preguntas_por_id_video(self, video_id):
+        """Obtiene las preguntas y opciones para un video específico."""
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT ID_Pregunta, Pregunta, Opcion_A, Opcion_B, Opcion_Correcta, Comentario
+            FROM Pregunta
+            WHERE ID_Video = ? AND Estado = 'Activo'
+        """, (video_id,))
+        return [dict(row) for row in cursor.fetchall()]
