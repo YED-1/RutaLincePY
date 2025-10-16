@@ -1,26 +1,19 @@
 import flet as ft
+from src.screens.juegos_screen import JuegosScreen
+from src.screens.simulador_screen import SimuladorScreen
 from src.screens.ajustes_screen import AjustesScreen
 
-# --- Pantallas Temporales (para que la navegación funcione) ---
-# (Mantenemos estas hasta que construyas las pantallas reales)
-class JuegosScreen(ft.Column):
-    def __init__(self, page: ft.Page, **kwargs):
-        super().__init__()
-        self.controls = [ft.Text("Pantalla de Juegos", size=30)]
-
-class SimuladorScreen(ft.Column):
-    def __init__(self, page: ft.Page, **kwargs):
-        super().__init__()
-        self.controls = [ft.Text("Pantalla de Simulador", size=30)]
-
-# 2. BORRAMOS la clase temporal "AjustesScreen" de aquí porque ya la importamos
-
-# --- Fin de Pantallas Temporales ---
 
 def create_nav_bar(page: ft.Page, selected_index: int, id_carrera: str, id_campus: str, id_usuario: str):
     def on_navigation_change(e):
+        # Importamos InicioScreen aquí para evitar importaciones circulares
         from src.screens.inicio_screen import InicioScreen
+
         index = int(e.data)
+
+        # Evita recargar la página si ya estamos en ella
+        if index == selected_index:
+            return
 
         page.clean()
         page.appbar = None
@@ -32,7 +25,6 @@ def create_nav_bar(page: ft.Page, selected_index: int, id_carrera: str, id_campu
         elif index == 2:
             page.add(SimuladorScreen(page, id_carrera=id_carrera, id_campus=id_campus, id_usuario=id_usuario))
         elif index == 3:
-            # 3. Esta llamada ahora usará la pantalla real importada
             page.add(AjustesScreen(page, id_carrera=id_carrera, id_campus=id_campus, id_usuario=id_usuario))
 
         page.update()

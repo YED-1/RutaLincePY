@@ -1,7 +1,6 @@
 import flet as ft
 import uuid
 from database.database import DatabaseHelper
-from src.widgets.nav_bar_widget import create_nav_bar
 from src.widgets.comments_widget import CommentsWidget
 
 
@@ -28,7 +27,6 @@ class InicioScreen(ft.Column):
         self.video_title = ft.Text(size=26, weight=ft.FontWeight.BOLD)
         self.video_description = ft.Text(size=18, text_align=ft.TextAlign.JUSTIFY)
 
-        # Contenedor para la vista principal (video o indicador de carga)
         self.main_content = ft.Container(
             content=ft.Column(
                 [ft.ProgressRing(), ft.Text("Cargando...")],
@@ -48,13 +46,14 @@ class InicioScreen(ft.Column):
     def did_mount(self):
         self.page.appbar = None
         self._initialize_screen()
-        # La barra de navegación se crea después de tener el id_usuario
 
     def _initialize_screen(self):
         """Método principal para cargar todo en orden."""
+        # AÑADIMOS la importación aquí, justo antes de usarla
+        from src.widgets.nav_bar_widget import create_nav_bar
+
         self._save_user_data()
 
-        # Ahora que tenemos el id_usuario, creamos la barra de navegación
         self.page.navigation_bar = create_nav_bar(
             page=self.page,
             selected_index=0,
@@ -75,7 +74,6 @@ class InicioScreen(ft.Column):
 
     def _save_user_data(self):
         self.id_usuario = self._get_or_create_user_id()
-        # Guardamos los IDs para que otras pantallas puedan recuperarlos
         self.page.client_storage.set("idCampus", self.id_campus)
         self.page.client_storage.set("idCarrera", self.id_carrera)
 
@@ -127,13 +125,11 @@ class InicioScreen(ft.Column):
         video_data = self.videos[self.video_index]
         video_id = video_data['ID_Video']
 
-        # Asumiendo que tus videos están en una carpeta 'assets/videos/' en la raíz del proyecto
         self.video_player.src = f"/videos/{video_data['URL_Video']}.mp4"
 
         self.video_title.value = video_data['Nombre']
         self.video_description.value = video_data['Descripción']
 
-        # Botón para abrir los comentarios, tal como en el diseño de Flutter
         comments_button = ft.IconButton(
             icon=ft.Icons.COMMENT_OUTLINED,
             tooltip="Ver comentarios y quiz",
@@ -145,7 +141,6 @@ class InicioScreen(ft.Column):
                 self.video_player,
                 ft.Container(height=10),
                 ft.Row([ft.Text(""), comments_button], alignment=ft.MainAxisAlignment.END),
-                # Alineamos el botón a la derecha
                 ft.Container(height=10),
                 self.video_title,
                 self.video_description,
@@ -167,7 +162,6 @@ class InicioScreen(ft.Column):
         self.update()
 
     def _show_comments(self, video_id):
-        """Muestra la hoja de comentarios."""
         self.page.bottom_sheet = ft.BottomSheet(
             ft.Container(
                 content=CommentsWidget(

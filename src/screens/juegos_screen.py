@@ -1,5 +1,4 @@
 import flet as ft
-from src.widgets.nav_bar_widget import create_nav_bar
 from src.screens.seleccionar_sopa_screen import SeleccionarSopaScreen
 from src.screens.seleccionar_crucigrama_screen import SeleccionarCrucigramaScreen
 
@@ -33,6 +32,7 @@ class JuegosScreen(ft.Column):
         ]
 
     def did_mount(self):
+        from src.widgets.nav_bar_widget import create_nav_bar
         self.page.appbar = None
         self.page.navigation_bar = create_nav_bar(
             page=self.page,

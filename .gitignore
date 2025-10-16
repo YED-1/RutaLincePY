@@ -10,6 +10,7 @@ env.bak
 venv.bak
 .db
 pyproject.toml
+.gitignore
 
 # =======================================================
 # Archivos generados por Python
