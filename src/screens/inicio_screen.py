@@ -7,6 +7,9 @@ from src.widgets.comments_widget import CommentsWidget
 class InicioScreen(ft.Column):
     def __init__(self, page: ft.Page, id_carrera: str, id_campus: str):
         super().__init__(expand=True)
+        # --- DEBUG PRINT 1: What ID did we receive? ---
+        print(f"\n--- DEBUG: InicioScreen received id_carrera='{id_carrera}' ---")
+
         self.page = page
         self.id_carrera = id_carrera
         self.id_campus = id_campus
@@ -19,9 +22,11 @@ class InicioScreen(ft.Column):
         self.video_index = 0
         self.has_counted_view = False
 
-        # --- Controles de la UI ---
         self.area_tabs = ft.Row(scroll=ft.ScrollMode.AUTO)
-        self.video_player = ft.Video(expand=True)
+        self.video_player = ft.Video(
+            expand=True,
+            autoplay=True  # El video empezará solo cuando esté listo
+        )
         self.video_player.on_position_changed = self._on_video_update
 
         self.video_title = ft.Text(size=26, weight=ft.FontWeight.BOLD)
@@ -44,26 +49,16 @@ class InicioScreen(ft.Column):
         ]
 
     def did_mount(self):
-        self.page.appbar = None
-        self._initialize_screen()
-
-    def _initialize_screen(self):
-        """Método principal para cargar todo en orden."""
-        # AÑADIMOS la importación aquí, justo antes de usarla
         from src.widgets.nav_bar_widget import create_nav_bar
-
         self._save_user_data()
 
+        self.page.appbar = None
         self.page.navigation_bar = create_nav_bar(
-            page=self.page,
-            selected_index=0,
-            id_carrera=self.id_carrera,
-            id_campus=self.id_campus,
-            id_usuario=self.id_usuario
+            page=self.page, selected_index=0,
+            id_carrera=self.id_carrera, id_campus=self.id_campus, id_usuario=self.id_usuario
         )
-
-        self._load_areas()
-        self.page.update()
+        self.page.update()  # Update to show NavBar immediately
+        self._load_areas()  # Load data after NavBar is shown
 
     def _get_or_create_user_id(self):
         user_id = self.page.client_storage.get("idUsuario")
@@ -84,7 +79,12 @@ class InicioScreen(ft.Column):
         )
 
     def _load_areas(self):
+        # --- DEBUG PRINT 2: Are we finding any Areas for this Career ID? ---
+        print(f"--- DEBUG: Querying database for Areas with id_carrera='{self.id_carrera}' ---")
         self.areas = self.db_helper.get_areas_id_carrera(self.id_carrera)
+        # --- DEBUG PRINT 3: Show the results of the Area query ---
+        print(f"--- DEBUG: Found {len(self.areas)} Areas. Data: {self.areas} ---")
+
         self.area_tabs.controls.clear()
         for i, area in enumerate(self.areas):
             self.area_tabs.controls.append(
@@ -102,33 +102,54 @@ class InicioScreen(ft.Column):
                     )
                 )
             )
+        # Update UI here to show tabs even if videos fail
+        self.update()
         self._load_videos()
 
     def _load_videos(self):
         if not self.areas:
+            print("--- DEBUG: No Areas found, stopping video load process. THIS IS LIKELY THE PROBLEM. ---")
             self.main_content.content = ft.Text("No hay áreas para esta carrera.")
             self.update()
             return
 
         area_id = self.areas[self.current_area_index]['ID_Area']
+        # --- DEBUG PRINT 4: Are we finding any Videos for this Area ID? ---
+        print(f"--- DEBUG: Querying database for Videos with id_area='{area_id}' ---")
         self.videos = self.db_helper.get_videos_by_id_area(area_id)
+        # --- DEBUG PRINT 5: Show the results of the Video query ---
+        print(f"--- DEBUG: Found {len(self.videos)} Videos. ---")
+
         self.video_index = 0
         self._initialize_video()
 
     def _initialize_video(self):
         if not self.videos:
+            print("--- DEBUG: No Videos found for this area. Displaying error message. ---")
             self.main_content.content = ft.Text("No hay videos para esta área.")
             self.update()
             return
 
+        print("--- DEBUG: Initializing video player... ---")
         self.has_counted_view = False
         video_data = self.videos[self.video_index]
         video_id = video_data['ID_Video']
 
-        self.video_player.src = f"/videos/{video_data['URL_Video']}.mp4"
+        # Make sure the URL_Video exists and is not empty/None
+        video_url = video_data.get('URL_Video')
+        if not video_url:
+            print(f"--- DEBUG ERROR: Video with ID '{video_id}' has an invalid URL_Video: {video_url} ---")
+            self.main_content.content = ft.Text(f"Error: Video '{video_data.get('Nombre')}' tiene una URL inválida.")
+            self.update()
+            return
 
-        self.video_title.value = video_data['Nombre']
-        self.video_description.value = video_data['Descripción']
+        # Ensure the video path is correctly formed
+        video_path = f"/videos/{video_url}.mp4"
+        print(f"--- DEBUG: Setting video source to: {video_path} ---")
+        self.video_player.src = video_path
+
+        self.video_title.value = video_data.get('Nombre', 'Sin Título')
+        self.video_description.value = video_data.get('Descripción', 'Sin Descripción')
 
         comments_button = ft.IconButton(
             icon=ft.Icons.COMMENT_OUTLINED,
@@ -158,10 +179,12 @@ class InicioScreen(ft.Column):
             horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
         self.main_content.content = video_view
-        self.video_player.play()
+        # self.video_player.play() # No longer needed with autoplay=True
         self.update()
+        print("--- DEBUG: Video player initialized and view updated. Autoplay enabled. ---")
 
     def _show_comments(self, video_id):
+        print(f"--- DEBUG: Opening comments for video_id='{video_id}' ---")
         self.page.bottom_sheet = ft.BottomSheet(
             ft.Container(
                 content=CommentsWidget(
@@ -178,19 +201,25 @@ class InicioScreen(ft.Column):
         self.page.update()
 
     def _on_video_update(self, e):
-        position_seconds = int(e.data) / 1000
-        if not self.has_counted_view and position_seconds >= 5:
-            self.has_counted_view = True
-            video_id = self.videos[self.video_index]['ID_Video']
-            self.db_helper.incrementar_visualizacion(video_id)
-            print(f"Vista contada para el video {video_id}")
+        try:
+            position_seconds = int(e.data) / 1000
+            if not self.has_counted_view and position_seconds >= 5:
+                self.has_counted_view = True
+                video_id = self.videos[self.video_index]['ID_Video']
+                self.db_helper.incrementar_visualizacion(video_id)
+                print(f"--- DEBUG: Vista contada para el video {video_id} ---")
+        except Exception as ex:
+            print(f"--- DEBUG ERROR in _on_video_update: {ex} ---")
 
     def _on_area_tap(self, index):
+        print(f"--- DEBUG: Area tab {index} tapped. ---")
         self.current_area_index = index
+        # Reload areas to update tab colors, then load videos for the selected area
         self._load_areas()
 
     def _on_next_video_click(self, e):
-        self.video_player.pause()
+        print("--- DEBUG: 'Next Video' button clicked. ---")
+        self.video_player.pause()  # Pausamos el video actual antes de cargar el siguiente
         if self.video_index < len(self.videos) - 1:
             self.video_index += 1
         else:

@@ -1,6 +1,6 @@
 import flet as ft
-from src.screens.inicio_screen import InicioScreen
 from src.database.database import DatabaseHelper
+from src.screens.inicio_screen import InicioScreen
 
 
 class SeleccionCarreraScreen(ft.Column):
@@ -10,12 +10,10 @@ class SeleccionCarreraScreen(ft.Column):
         self.id_campus = id_campus
         self.campus_nombre = campus_nombre
 
-        # Instanciamos el helper para usar la base de datos
         self.db_helper = DatabaseHelper()
         self.selected_carrera_nombre = None
 
         # --- Controles de la UI ---
-        # Título con el nombre del campus que viene de la BD
         self.title = ft.Text(
             spans=[
                 ft.TextSpan("¿Qué carrera estudias en el campus "),
@@ -29,7 +27,6 @@ class SeleccionCarreraScreen(ft.Column):
             text_align=ft.TextAlign.CENTER,
         )
 
-        # Contenedor para manejar el estado de carga (como un FutureBuilder)
         self.carreras_grid = ft.GridView(
             expand=True, runs_count=2, spacing=10, run_spacing=10, child_aspect_ratio=2.0
         )
@@ -58,20 +55,19 @@ class SeleccionCarreraScreen(ft.Column):
 
     def did_mount(self):
         self.page.appbar = ft.AppBar(title=ft.Text("Selecciona tu Carrera"), bgcolor=ft.Colors.GREY_200)
-        self._fetch_carreras()  # Llama a la función que lee la BD
+        self._fetch_carreras()
         self.page.update()
 
     def _fetch_carreras(self):
-        # Llama al método del helper para obtener las carreras del campus seleccionado
         carreras_list = self.db_helper.get_nombres_carrera_por_id_campus(self.id_campus)
 
         if not carreras_list:
-            self.content_area.content = ft.Text("No se encontraron carreras para este campus.",text_align=ft.TextAlign.CENTER)
+            self.content_area.content = ft.Text("No se encontraron carreras para este campus.",
+                                                text_align=ft.TextAlign.CENTER)
         else:
             self.carreras_grid.controls.clear()
             for nombre in carreras_list:
                 self.carreras_grid.controls.append(self.create_carrera_card(nombre))
-            # Reemplaza el indicador de carga con el grid lleno de datos
             self.content_area.content = self.carreras_grid
 
         self.update()
@@ -95,22 +91,39 @@ class SeleccionCarreraScreen(ft.Column):
             card = card_detector.content
             is_selected = card.data == nombre_carrera
             card.color = ft.Colors.BLUE_900 if is_selected else ft.Colors.WHITE
-            text_widget = card.content.content
+            text_widget = card.content.content  # Asumiendo que content es Container(content=Text)
             text_widget.color = ft.Colors.WHITE if is_selected else ft.Colors.BLACK
         self.next_button.disabled = False
         self.update()
 
     def _on_next_pressed(self, e):
         if self.selected_carrera_nombre:
-            # Obtiene el ID de la carrera desde la BD
+            # Obtenemos el ID de la carrera desde la BD
             id_carrera = self.db_helper.get_id_carrera_by_nombre(self.selected_carrera_nombre)
+
+            # --- AÑADIDA LÍNEA PARA DEPURAR ---
+            print(
+                f"\n--- DEBUG (Carrera): Obtenido id_carrera='{id_carrera}' para el nombre '{self.selected_carrera_nombre}' ---")
+            # --- FIN DE LA LÍNEA DE DEPURACIÓN ---
+
+            # Verificamos si el ID es válido antes de continuar
+            if not id_carrera:
+                print(
+                    f"--- DEBUG ERROR (Carrera): No se encontró ID para la carrera '{self.selected_carrera_nombre}' ---")
+                self.page.snack_bar = ft.SnackBar(
+                    ft.Text(f"Error: No se pudo encontrar el ID para {self.selected_carrera_nombre}"))
+                self.page.snack_bar.open = True
+                self.page.update()
+                return  # Detenemos la navegación
 
             # Guarda el ID en el almacenamiento del cliente
             self.page.client_storage.set("idCarrera", id_carrera)
             print(f"ID de Carrera guardado: {id_carrera}")
 
-            # Navega a la siguiente pantalla (por ejemplo, InicioScreen)
+            # Navegamos a la pantalla de inicio
             self.page.appbar = None
             self.page.clean()
-            self.page.add(InicioScreen(self.page, self.id_campus, id_carrera))
+            self.page.add(InicioScreen(self.page, id_campus=self.id_campus, id_carrera=id_carrera))
             self.page.update()
+        else:
+            print("--- DEBUG WARNING (Carrera): Se presionó Siguiente sin seleccionar carrera ---")

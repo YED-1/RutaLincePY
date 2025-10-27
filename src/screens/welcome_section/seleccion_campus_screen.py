@@ -1,7 +1,5 @@
 import flet as ft
-# 1. IMPORTAMOS LA PANTALLA A LA QUE VAMOS A NAVEGAR
 from src.screens.welcome_section.seleccion_carrera_screen import SeleccionCarreraScreen
-# 2. IMPORTAMOS NUESTRA CLASE DE BASE DE DATOS
 from src.database.database import DatabaseHelper
 
 

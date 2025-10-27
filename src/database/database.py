@@ -8,14 +8,18 @@ class DatabaseHelper:
     def __init__(self, db_name="ruta_lince.db"):
         self.base_dir = os.path.dirname(os.path.abspath(__file__))
         self.db_path = os.path.join(self.base_dir, db_name)
-        self.conn = None
-        self._connect_and_create()
+        self._ensure_tables_exist_and_populate()
 
-    def _connect_and_create(self):
-        """Conecta a la BD, crea las tablas y llama al cargador de CSV."""
-        self.conn = sqlite3.connect(self.db_path)
-        self.conn.row_factory = sqlite3.Row
-        cursor = self.conn.cursor()
+    def _get_connection(self):
+        """Creates and returns a new thread-safe connection."""
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    def _ensure_tables_exist_and_populate(self):
+        """Ensures tables exist and calls the CSV loader if needed."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
 
         create_table_queries = [
             '''CREATE TABLE IF NOT EXISTS Campus (ID_Campus TEXT PRIMARY KEY, Nombre TEXT, Estado TEXT)''',
@@ -37,72 +41,208 @@ class DatabaseHelper:
 
         for query in create_table_queries:
             cursor.execute(query)
-        self.conn.commit()
+        conn.commit()
 
-        from . import csv_loader
-        csv_loader.populate_from_csv_if_empty(self)
+        cursor.execute("SELECT COUNT(*) FROM Campus")
+        if cursor.fetchone()[0] == 0:
+            try:
+                from src.database import csv_loader  # Usamos import absoluto
+                csv_loader.populate_from_csv_if_empty(self, conn)
+            except ImportError as e:
+                print(f"ADVERTENCIA: No se pudo importar csv_loader ({e}). Omitiendo carga desde CSV.")
+            except Exception as e:
+                print(f"ERROR durante la carga CSV inicial: {e}")
 
-    def _execute_insert(self, query, values):
-        cursor = self.conn.cursor()
-        cursor.execute(query, values)
+        conn.close()
 
+    def _execute_query(self, query, params=()):
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(row) for row in rows]
+
+    def _execute_commit(self, query, params=()):
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(query, params)
+            conn.commit()
+        except sqlite3.IntegrityError:
+            pass  # Ignorar duplicados
+        except Exception as e:
+            print(f"DB Error: {e}. Query: {query}, Params: {params}")
+        finally:
+            conn.close()
+
+    # --- Insertion Methods ---
     def insert_campus(self, row):
-        self._execute_insert("INSERT INTO Campus VALUES (?, ?, ?)", (row[0], row[1], row[2]))
+        self._execute_commit("INSERT OR IGNORE INTO Campus VALUES (?, ?, ?)", (row[0], row[1], row[2]))
 
     def insert_carrera(self, row):
-        self._execute_insert("INSERT INTO Carrera VALUES (?, ?, ?)", (row[0], row[1], row[2]))
+        self._execute_commit("INSERT OR IGNORE INTO Carrera VALUES (?, ?, ?)", (row[0], row[1], row[2]))
 
     def insert_carrera_campus(self, row):
-        self._execute_insert("INSERT INTO Carrera_Campus VALUES (?, ?, ?)", (row[0], row[1], row[2]))
+        self._execute_commit("INSERT OR IGNORE INTO Carrera_Campus VALUES (?, ?, ?)", (row[0], row[1], row[2]))
 
     def insert_area(self, row):
-        self._execute_insert("INSERT INTO Area VALUES (?, ?, ?, ?)", (row[0], row[1], row[2], row[3]))
+        self._execute_commit("INSERT OR IGNORE INTO Area VALUES (?, ?, ?, ?)", (row[0], row[1], row[2], row[3]))
 
     def insert_tema(self, row):
-        self._execute_insert("INSERT INTO Tema VALUES (?, ?, ?, ?)", (row[0], row[1], row[2], row[3]))
+        self._execute_commit("INSERT OR IGNORE INTO Tema VALUES (?, ?, ?, ?)", (row[0], row[1], row[2], row[3]))
 
     def insert_video(self, row):
-        self._execute_insert(
-            "INSERT INTO Video (ID_Video, Nombre, Descripción, URL_Video, Estado, ID_Area) VALUES (?, ?, ?, ?, ?, ?)",
+        self._execute_commit(
+            "INSERT OR IGNORE INTO Video (ID_Video, Nombre, Descripción, URL_Video, Estado, ID_Area) VALUES (?, ?, ?, ?, ?, ?)",
             (row[0], row[1], row[2], row[3], row[8], row[9]))
 
     def insert_pregunta(self, row):
-        self._execute_insert("INSERT INTO Pregunta VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        self._execute_commit("INSERT OR IGNORE INTO Pregunta VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                              (row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9], row[10]))
 
     def insert_simulador(self, row):
-        self._execute_insert("INSERT INTO Simulador VALUES (?, ?, ?, ?, ?)", (row[0], row[1], row[2], row[3], row[4]))
+        self._execute_commit("INSERT OR IGNORE INTO Simulador VALUES (?, ?, ?, ?, ?)",
+                             (row[0], int(row[1]), row[2], row[3], row[4]))
 
     def insert_sopa(self, row):
-        self._execute_insert("INSERT INTO Sopa VALUES (?, ?, ?, ?, ?)", (row[0], row[1], row[2], row[3], row[4]))
+        self._execute_commit("INSERT OR IGNORE INTO Sopa VALUES (?, ?, ?, ?, ?)",
+                             (row[0], int(row[1]), row[2], row[3], row[4]))
 
     def insert_crucigrama(self, row):
-        self._execute_insert("INSERT INTO Crucigrama VALUES (?, ?, ?, ?, ?)", (row[0], row[1], row[2], row[3], row[4]))
+        self._execute_commit("INSERT OR IGNORE INTO Crucigrama VALUES (?, ?, ?, ?, ?)",
+                             (row[0], int(row[1]), row[2], row[3], row[4]))
 
     def insert_palabra(self, row):
-        self._execute_insert(
-            "INSERT INTO Palabra (ID_Palabra, Palabra, Descripción, Estado, ID_Area, ID_Sopa, ID_Crucigrama) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        self._execute_commit(
+            "INSERT OR IGNORE INTO Palabra (ID_Palabra, Palabra, Descripción, Estado, ID_Area, ID_Sopa, ID_Crucigrama) VALUES (?, ?, ?, ?, ?, ?, ?)",
             (row[0], row[2], row[3], row[4], row[5], row[6], row[7]))
 
+    # --- GET Methods ---
     def get_campus(self):
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT ID_Campus, Nombre FROM Campus WHERE Estado = 'Activo'")
-        return [dict(row) for row in cursor.fetchall()]
+        return self._execute_query("SELECT ID_Campus, Nombre FROM Campus WHERE Estado = 'Activo'")
 
     def get_nombres_carrera_por_id_campus(self, id_campus):
-        cursor = self.conn.cursor()
         query = "SELECT c.Nombre FROM Carrera_Campus cc JOIN Carrera c ON cc.ID_Carrera = c.ID_Carrera WHERE cc.ID_Campus = ? AND c.Estado = 'Activo'"
-        cursor.execute(query, (id_campus,))
-        return [row['Nombre'] for row in cursor.fetchall()]
+        rows = self._execute_query(query, (id_campus,))
+        return [row['Nombre'] for row in rows]
 
     def get_id_carrera_by_nombre(self, nombre_carrera):
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT ID_Carrera FROM Carrera WHERE Nombre = ?", (nombre_carrera,))
-        result = cursor.fetchone()
-        return result['ID_Carrera'] if result else None
+        rows = self._execute_query("SELECT ID_Carrera FROM Carrera WHERE Nombre = ?", (nombre_carrera,))
+        return rows[0]['ID_Carrera'] if rows else None
 
+    def get_areas_id_carrera(self, id_carrera):
+        return self._execute_query("SELECT ID_Area, Nombre FROM Area WHERE ID_Carrera = ? AND Estado = 'Activo'",
+                                   (id_carrera,))
+
+    def get_videos_by_id_area(self, id_area):
+        return self._execute_query("SELECT * FROM Video WHERE ID_Area = ? AND Estado = 'Activo'", (id_area,))
+
+    def get_campus_by_id(self, id_campus):
+        rows = self._execute_query("SELECT * FROM Campus WHERE ID_Campus = ?", (id_campus,))
+        return rows[0] if rows else None
+
+    def get_carrera_by_id(self, id_carrera):
+        rows = self._execute_query("SELECT * FROM Carrera WHERE ID_Carrera = ?", (id_carrera,))
+        return rows[0] if rows else None
+
+    def get_crucigramas_con_area_by_id_carrera(self, id_carrera):
+        query = "SELECT cr.*, ar.Nombre as NombreArea FROM Crucigrama cr JOIN Area ar ON cr.ID_Area = ar.ID_Area WHERE cr.ID_Carrera = ? AND cr.Estado = 'Activo'"
+        return self._execute_query(query, (id_carrera,))
+
+    def get_sopas_con_area_by_id_carrera(self, id_carrera):
+        query = "SELECT s.*, ar.Nombre as NombreArea FROM Sopa s JOIN Area ar ON s.ID_Area = ar.ID_Area WHERE s.ID_Carrera = ? AND s.Estado = 'Activo'"
+        return self._execute_query(query, (id_carrera,))
+
+    def get_palabras_por_sopa(self, id_sopa):
+        rows = self._execute_query("SELECT Palabra FROM Palabra WHERE ID_Sopa = ?", (id_sopa,))
+        return [row['Palabra'] for row in rows]
+
+    def get_video_by_id(self, video_id):
+        rows = self._execute_query("SELECT * FROM Video WHERE ID_Video = ?", (video_id,))
+        return rows[0] if rows else None
+
+    def get_user_reaction_for_video(self, video_id, user_id):
+        rows = self._execute_query("SELECT Tipo FROM Reaccion WHERE ID_Video = ? AND ID_Usuario = ?",
+                                   (video_id, user_id))
+        return rows[0]['Tipo'] if rows else None
+
+    def get_comments_by_id_video(self, video_id):
+        return self._execute_query(
+            "SELECT * FROM Comentario WHERE ID_Video = ? AND Estado = 'Activo' ORDER BY Fecha DESC", (video_id,))
+
+    def get_preguntas_por_id_area_activo(self, id_area):
+        return self._execute_query(
+            "SELECT ID_Pregunta, Pregunta, Opcion_A, Opcion_B, Opcion_Correcta, Comentario, ID_Tema FROM Pregunta WHERE ID_Area = ? AND Estado = 'Activo' AND ID_Tema != 'No aplica'",
+            (id_area,))
+
+    def get_nombres_temas_por_ids(self, ids_tema: list):
+        if not ids_tema: return {}
+        placeholders = ','.join('?' for _ in ids_tema)
+        rows = self._execute_query(f"SELECT ID_Tema, Nombre FROM Tema WHERE ID_Tema IN ({placeholders})", ids_tema)
+        return {row['ID_Tema']: row['Nombre'] for row in rows}
+
+    def get_simuladores_con_area_by_id_carrera(self, id_carrera):
+        query = "SELECT s.*, ar.Nombre as NombreArea FROM Simulador s JOIN Area ar ON s.ID_Area = ar.ID_Area WHERE s.ID_Carrera = ? AND s.Estado = 'Activo'"
+        return self._execute_query(query, (id_carrera,))
+
+    def get_preguntas_por_id_video(self, video_id):
+        return self._execute_query(
+            "SELECT ID_Pregunta, Pregunta, Opcion_A, Opcion_B, Opcion_Correcta, Comentario FROM Pregunta WHERE ID_Video = ? AND Estado = 'Activo'",
+            (video_id,))
+
+    def palabra_crucigrama(self, id_crucigrama):
+        rows = self._execute_query(
+            "SELECT Palabra, Descripción FROM Palabra WHERE ID_Crucigrama = ? AND Estado = 'Activo' ORDER BY RANDOM() LIMIT 1",
+            (id_crucigrama,))
+        if rows:
+            return {'palabra': rows[0]['Palabra'], 'descripcion': rows[0]['Descripción']}
+        else:
+            raise Exception("No se encontró una palabra para este crucigrama.")
+
+    def get_carrera(self):
+        return self._execute_query("SELECT * FROM Carrera")
+
+    def get_carrera_campus(self):
+        return self._execute_query("SELECT * FROM Carrera_Campus")
+
+    def get_video(self):
+        return self._execute_query("SELECT * FROM Video")
+
+    def get_area(self):
+        return self._execute_query("SELECT * FROM Area")
+
+    def get_pregunta(self):
+        return self._execute_query("SELECT * FROM Pregunta")
+
+    def get_comentario(self):
+        return self._execute_query("SELECT * FROM Comentario")
+
+    def get_simulador(self):
+        return self._execute_query("SELECT * FROM Simulador")
+
+    def get_crucigrama(self):
+        return self._execute_query("SELECT * FROM Crucigrama")
+
+    def get_sopa(self):
+        return self._execute_query("SELECT * FROM Sopa")
+
+    def get_palabra(self):
+        return self._execute_query("SELECT * FROM Palabra")
+
+    def get_usuario(self):
+        return self._execute_query("SELECT * FROM Usuario")
+
+    def get_tema(self):
+        return self._execute_query("SELECT * FROM Tema")
+
+    def get_resultado(self):
+        return self._execute_query("SELECT * FROM Resultado")
+
+    # --- UPDATE/INSERT Methods ---
     def insert_or_update_usuario(self, id_usuario, id_campus, id_carrera):
-        cursor = self.conn.cursor()
+        conn = self._get_connection()
+        cursor = conn.cursor()
         cursor.execute("SELECT ID_Usuario FROM Usuario WHERE ID_Usuario = ?", (id_usuario,))
         if cursor.fetchone():
             cursor.execute("UPDATE Usuario SET ID_Campus = ?, ID_Carrera = ? WHERE ID_Usuario = ?",
@@ -110,116 +250,36 @@ class DatabaseHelper:
         else:
             cursor.execute("INSERT INTO Usuario (ID_Usuario, ID_Campus, ID_Carrera) VALUES (?, ?, ?)",
                            (id_usuario, id_campus, id_carrera))
-        self.conn.commit()
-
-    def get_areas_id_carrera(self, id_carrera):
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT ID_Area, Nombre FROM Area WHERE ID_Carrera = ? AND Estado = 'Activo'", (id_carrera,))
-        return [dict(row) for row in cursor.fetchall()]
-
-    def get_videos_by_id_area(self, id_area):
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT * FROM Video WHERE ID_Area = ? AND Estado = 'Activo'", (id_area,))
-        return [dict(row) for row in cursor.fetchall()]
+        conn.commit()
+        conn.close()
 
     def incrementar_visualizacion(self, id_video):
-        cursor = self.conn.cursor()
-        cursor.execute("UPDATE Video SET Visualizaciones = Visualizaciones + 1 WHERE ID_Video = ?", (id_video,))
-        self.conn.commit()
-
-    def get_campus_by_id(self, id_campus):
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT * FROM Campus WHERE ID_Campus = ?", (id_campus,))
-        row = cursor.fetchone()
-        return dict(row) if row else None
-
-    def get_carrera_by_id(self, id_carrera):
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT * FROM Carrera WHERE ID_Carrera = ?", (id_carrera,))
-        row = cursor.fetchone()
-        return dict(row) if row else None
-
-    def get_crucigramas_con_area_by_id_carrera(self, id_carrera):
-        cursor = self.conn.cursor()
-        query = "SELECT cr.*, ar.Nombre as NombreArea FROM Crucigrama cr JOIN Area ar ON cr.ID_Area = ar.ID_Area WHERE cr.ID_Carrera = ? AND cr.Estado = 'Activo'"
-        cursor.execute(query, (id_carrera,))
-        return [dict(row) for row in cursor.fetchall()]
-
-    def get_sopas_con_area_by_id_carrera(self, id_carrera):
-        cursor = self.conn.cursor()
-        query = "SELECT s.*, ar.Nombre as NombreArea FROM Sopa s JOIN Area ar ON s.ID_Area = ar.ID_Area WHERE s.ID_Carrera = ? AND s.Estado = 'Activo'"
-        cursor.execute(query, (id_carrera,))
-        return [dict(row) for row in cursor.fetchall()]
-
-    def get_palabras_por_sopa(self, id_sopa):
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT Palabra FROM Palabra WHERE ID_Sopa = ?", (id_sopa,))
-        return [row['Palabra'] for row in cursor.fetchall()]
-
-    def get_video_by_id(self, video_id):
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT * FROM Video WHERE ID_Video = ?", (video_id,))
-        row = cursor.fetchone()
-        return dict(row) if row else None
-
-    def get_user_reaction_for_video(self, video_id, user_id):
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT Tipo FROM Reaccion WHERE ID_Video = ? AND ID_Usuario = ?", (video_id, user_id))
-        row = cursor.fetchone()
-        return row['Tipo'] if row else None
+        self._execute_commit("UPDATE Video SET Visualizaciones = Visualizaciones + 1 WHERE ID_Video = ?", (id_video,))
 
     def delete_reaction(self, video_id, user_id):
-        cursor = self.conn.cursor()
-        cursor.execute("DELETE FROM Reaccion WHERE ID_Video = ? AND ID_Usuario = ?", (video_id, user_id))
-        self.conn.commit()
+        self._execute_commit("DELETE FROM Reaccion WHERE ID_Video = ? AND ID_Usuario = ?", (video_id, user_id))
 
     def insert_reaction(self, reaction_id, video_id, user_id, tipo):
-        cursor = self.conn.cursor()
-        cursor.execute(
+        self._execute_commit(
             "INSERT INTO Reaccion (ID_Reaccion, ID_Video, ID_Usuario, Tipo, Fecha, Estado) VALUES (?, ?, ?, ?, date('now'), 'Activo')",
             (reaction_id, video_id, user_id, tipo))
-        self.conn.commit()
 
     def update_video_counter(self, video_id, field, delta):
-        cursor = self.conn.cursor()
-        if field in ['Cantidad_Likes', 'Cantidad_Dislikes']:
-            cursor.execute(f"UPDATE Video SET {field} = {field} + ? WHERE ID_Video = ?", (delta, video_id))
-            self.conn.commit()
-
-    def get_comments_by_id_video(self, video_id):
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT * FROM Comentario WHERE ID_Video = ? AND Estado = 'Activo' ORDER BY Fecha DESC",
-                       (video_id,))
-        return [dict(row) for row in cursor.fetchall()]
+        if field in ['Cantidad_Likes', 'Cantidad_Dislikes']: self._execute_commit(
+            f"UPDATE Video SET {field} = MAX(0, {field} + ?) WHERE ID_Video = ?", (delta, video_id))
 
     def add_comment(self, comment_id, video_id, user_id, comment_text):
-        cursor = self.conn.cursor()
-        cursor.execute(
+        self._execute_commit(
             "INSERT INTO Comentario (ID_Comentario, Comentario, Fecha, Estado, ID_Usuario, ID_Video) VALUES (?, ?, date('now'), 'Activo', ?, ?)",
             (comment_id, comment_text, user_id, video_id))
-        self.conn.commit()
-
-    def get_preguntas_por_id_area_activo(self, id_area):
-        cursor = self.conn.cursor()
-        cursor.execute(
-            "SELECT ID_Pregunta, Pregunta, Opcion_A, Opcion_B, Opcion_Correcta, Comentario, ID_Tema FROM Pregunta WHERE ID_Area = ? AND Estado = 'Activo' AND ID_Tema != 'No aplica'",
-            (id_area,))
-        return [dict(row) for row in cursor.fetchall()]
-
-    def get_nombres_temas_por_ids(self, ids_tema: list):
-        if not ids_tema: return {}
-        placeholders = ','.join('?' for _ in ids_tema)
-        cursor = self.conn.cursor()
-        cursor.execute(f"SELECT ID_Tema, Nombre FROM Tema WHERE ID_Tema IN ({placeholders})", ids_tema)
-        return {row['ID_Tema']: row['Nombre'] for row in cursor.fetchall()}
 
     def guardar_calificacion_por_tema(self, id_usuario, id_tema, calificacion, id_simulador, tiempo, id_resultado,
                                       fecha):
-        cursor = self.conn.cursor()
+        conn = self._get_connection()
+        cursor = conn.cursor()
         cursor.execute("SELECT ID_Resultado FROM Resultado WHERE ID_Usuario = ? AND ID_Tema = ? AND ID_Simulador = ?",
                        (id_usuario, id_tema, id_simulador))
-        existe = cursor.fetchone()
-        if existe:
+        if cursor.fetchone():
             cursor.execute(
                 "UPDATE Resultado SET Calificacion = ?, Tiempo = ?, Fecha = ? WHERE ID_Usuario = ? AND ID_Tema = ? AND ID_Simulador = ?",
                 (calificacion, tiempo, fecha, id_usuario, id_tema, id_simulador))
@@ -227,32 +287,5 @@ class DatabaseHelper:
             cursor.execute(
                 "INSERT INTO Resultado (ID_Resultado, Calificacion, Tiempo, Fecha, ID_Tema, ID_Usuario, ID_Simulador) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (id_resultado, calificacion, tiempo, fecha, id_tema, id_usuario, id_simulador))
-        self.conn.commit()
-
-    def get_simuladores_con_area_by_id_carrera(self, id_carrera):
-        cursor = self.conn.cursor()
-        query = "SELECT s.*, ar.Nombre as NombreArea FROM Simulador s JOIN Area ar ON s.ID_Area = ar.ID_Area WHERE s.ID_Carrera = ? AND s.Estado = 'Activo'"
-        cursor.execute(query, (id_carrera,))
-        return [dict(row) for row in cursor.fetchall()]
-
-    def get_preguntas_por_id_video(self, video_id):
-        cursor = self.conn.cursor()
-        cursor.execute(
-            "SELECT ID_Pregunta, Pregunta, Opcion_A, Opcion_B, Opcion_Correcta, Comentario FROM Pregunta WHERE ID_Video = ? AND Estado = 'Activo'",
-            (video_id,))
-        return [dict(row) for row in cursor.fetchall()]
-
-    def palabra_crucigrama(self, id_crucigrama):
-        """Obtiene una palabra aleatoria y su descripción para un crucigrama específico."""
-        cursor = self.conn.cursor()
-        cursor.execute("""
-            SELECT Palabra, Descripción FROM Palabra
-            WHERE ID_Crucigrama = ? AND Estado = 'Activo'
-            ORDER BY RANDOM() LIMIT 1
-        """, (id_crucigrama,))
-
-        row = cursor.fetchone()
-        if row:
-            return {'palabra': row['Palabra'], 'descripcion': row['Descripción']}
-        else:
-            raise Exception("No se encontró una palabra para este crucigrama.")
+        conn.commit()
+        conn.close()
