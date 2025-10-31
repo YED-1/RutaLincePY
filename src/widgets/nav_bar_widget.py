@@ -15,7 +15,11 @@ def create_nav_bar(page: ft.Page, selected_index: int, id_carrera: str, id_campu
         if index == selected_index:
             return
 
-        page.clean()
+        # --- INICIO DE LA CORRECCIÓN ---
+        # page.clean() # <-- ESTO ROMPE LA APP
+        page.controls.clear()  # <-- Esta es la forma segura
+        # --- FIN DE LA CORRECCIÓN ---
+
         page.appbar = None
 
         if index == 0:

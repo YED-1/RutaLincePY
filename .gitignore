@@ -20,7 +20,8 @@ ruta_lince.db
 __pycache__/
 .pytest_cache/
 .coverage
-
+# Ignorar la DLL del motor de video
+src/libmpv-2.dll
 
 # =======================================================
 # Archivos generados por Flutter y Dart
