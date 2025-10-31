@@ -8,7 +8,8 @@ authors = [
     { name = "Jiménez Alvear Joshua Yedreick", email = "jajosh56@gmail.com" }
 ]
 dependencies = [
-  "flet"
+  "flet==0.28.3",
+  "flet-video==0.1.1"
 ]
 
 [tool.flet]

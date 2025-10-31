@@ -2,6 +2,7 @@ import flet as ft
 from src.database.database import DatabaseHelper
 from src.widgets.video_interaction_widget import VideoInteractionWidget
 import uuid
+import traceback  # Importamos traceback
 
 
 class CommentsWidget(ft.Column):
@@ -60,12 +61,26 @@ class CommentsWidget(ft.Column):
             ),
         ]
 
+    # --- FUNCIÓN MODIFICADA CON TRY...EXCEPT ---
     def did_mount(self):
-        self._load_comments()
+        try:
+            print("--- DEBUG: CommentsWidget did_mount. Cargando comentarios... ---")
+            self._load_comments()
+            print("--- DEBUG: CommentsWidget _load_comments() terminó. ---")
+        except Exception as e:
+            # --- ¡¡AQUÍ CAZAREMOS EL ERROR!! ---
+            print(f"\n\n¡¡¡ERROR CATASTRÓFICO EN CommentsWidget.did_mount!!!")
+            print(f"Error: {e}")
+            traceback.print_exc()
+            # Mostramos el error en la UI
+            self.content_area.content = ft.Text(f"Error al cargar comentarios: {e}")
+            self.update()
 
     def _load_comments(self):
         """Carga los comentarios desde la BD y actualiza la lista."""
+        print("--- DEBUG: CommentsWidget._load_comments: Obteniendo comentarios de la BD...")
         comments = self.db_helper.get_comments_by_id_video(self.video_id)
+        print(f"--- DEBUG: CommentsWidget._load_comments: {len(comments)} comentarios encontrados.")
 
         self.comments_list_view.controls.clear()
         if not comments:
@@ -74,19 +89,28 @@ class CommentsWidget(ft.Column):
                 alignment=ft.alignment.center
             )
         else:
-            for comment in comments:
-                date = comment['Fecha'].split(' ')[0]  # Tomamos solo la parte de la fecha
+            for i, comment in enumerate(comments):
+                print(f"--- DEBUG: Procesando comentario {i}, Data: {comment}")
+                # --- CORRECCIÓN ANTERIOR (DEJADA POR SEGURIDAD) ---
+                raw_date = comment.get('Fecha')
+                date_str = "Fecha desconocida"
+
+                if raw_date:
+                    date_str = str(raw_date).split(' ')[0]  # Convertimos a str por si acaso
+                # --- FIN CORRECCIÓN ---
+
                 self.comments_list_view.controls.append(
                     ft.Column(
                         [
                             ft.Text(comment['Comentario'], size=16, weight=ft.FontWeight.W_500),
-                            ft.Text(date, size=12, color=ft.Colors.GREY),
+                            ft.Text(date_str, size=12, color=ft.Colors.GREY),
                         ],
                         spacing=4
                     )
                 )
             self.content_area.content = self.comments_list_view
 
+        print("--- DEBUG: CommentsWidget._load_comments: UI actualizada.")
         self.update()
 
     def _add_comment(self, e):
@@ -95,12 +119,14 @@ class CommentsWidget(ft.Column):
         if not comment_text:
             return
 
+        print("--- DEBUG: CommentsWidget._add_comment: Añadiendo comentario a la BD...")
         self.db_helper.add_comment(
             comment_id=str(uuid.uuid4()),
             video_id=self.video_id,
             user_id=self.id_usuario,
             comment_text=comment_text
         )
+        print("--- DEBUG: CommentsWidget._add_comment: Comentario añadido.")
 
         self.comment_input.value = ""  # Limpiamos el campo de texto
         self._load_comments()  # Volvemos a cargar los comentarios
