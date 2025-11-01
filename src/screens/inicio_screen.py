@@ -220,34 +220,54 @@ class InicioScreen(ft.Column):
     def _show_comments(self, video_id: str):
         print(f"--- DEBUG: _show_comments() para video_id='{video_id}' ---")
         try:
+            # Cerrar bottom sheet existente si hay uno
             if hasattr(self.page, 'bottom_sheet') and self.page.bottom_sheet is not None:
-                print("--- DEBUG: Forzando cierre de BottomSheet existente.")
+                print("--- DEBUG: Cerrando BottomSheet existente.")
                 self.page.bottom_sheet.open = False
                 self.page.update()
 
             print("--- DEBUG: Creando CommentsWidget...")
-            self.page.bottom_sheet = ft.BottomSheet(
+
+            # Crear el CommentsWidget
+            comments_widget = CommentsWidget(
+                page=self.page,
+                video_id=video_id,
+                id_usuario=self.id_usuario
+            )
+
+            # Crear el BottomSheet con configuración completa
+            bottom_sheet = ft.BottomSheet(
                 ft.Container(
-                    content=CommentsWidget(
-                        page=self.page,
-                        video_id=video_id,
-                        id_usuario=self.id_usuario
-                    ),
+                    content=comments_widget,
                     padding=15,
                     border_radius=ft.border_radius.vertical(top=20),
-                    height=self.page.window_height * 0.85
-                )
+                    height=self.page.height * 0.85  # Usar page.height en lugar de window_height
+                ),
+                open=True,  # IMPORTANTE: Abrir directamente aquí
+                on_dismiss=lambda _: print("--- DEBUG: BottomSheet cerrado ---")
             )
-            print("--- DEBUG: CommentsWidget creado. Poniendo .open = True...")
-            self.page.bottom_sheet.open = True
-            print("--- DEBUG: .open = True. Llamando a page.update()... ---")
+
+            # Añadir el BottomSheet a la página
+            self.page.overlay.append(bottom_sheet)
+            self.page.bottom_sheet = bottom_sheet  # Mantener referencia
+
+            print("--- DEBUG: BottomSheet creado y añadido a overlay. Actualizando página...")
             self.page.update()
-            print("--- DEBUG: page.update() llamado sin error. ---")
+            print("--- DEBUG: page.update() completado.")
 
         except Exception as e:
-            print(f"\n\n¡¡¡ERROR CATASTRÓFICO EN _show_comments!!!")
-            print(f"Error al *crear* CommentsWidget: {e}")
+            print(f"\n\n¡¡¡ERROR en _show_comments!!!")
+            print(f"Error: {e}")
             traceback.print_exc()
+
+            # Fallback: mostrar diálogo de error
+            self.page.show_dialog(
+                ft.AlertDialog(
+                    title=ft.Text("Error"),
+                    content=ft.Text(f"No se pudieron cargar los comentarios: {str(e)}"),
+                    actions=[ft.TextButton("OK", on_click=lambda e: self.page.close_dialog())]
+                )
+            )
 
     def _on_video_update(self, e):
         pass  # fv.Video no tiene este evento
@@ -297,4 +317,4 @@ class InicioScreen(ft.Column):
 
     def _on_video_ended(self, e):
         print("--- DEBUG: Video terminado. Cargando el siguiente. ---")
-        #self._on_next_video_click(e)
+        #self._on_next_video_click(e) NO QUITAR COMENTARIO, SE CREA UN MEGA BUCLE JAJAJA

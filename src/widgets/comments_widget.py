@@ -14,46 +14,65 @@ class CommentsWidget(ft.Column):
             self.video_id = video_id
             self.id_usuario = id_usuario
             self.db_helper = DatabaseHelper()
-            print("--- DEBUG: CommentsWidget.__init__() - db_helper creado.")
+            print(f"--- DEBUG: CommentsWidget para video_id='{video_id}', usuario='{id_usuario}'")
 
             # --- UI Controls ---
-            self.comments_list_view = ft.ListView(expand=True, spacing=10, padding=16)
+            self.comments_list_view = ft.ListView(
+                expand=True,
+                spacing=10,
+                padding=16,
+                auto_scroll=False  # Evitar scroll automático al cargar
+            )
+
             self.comment_input = ft.TextField(
                 hint_text="Escribe un comentario...",
                 border=ft.InputBorder.OUTLINE,
                 border_radius=8,
                 content_padding=ft.padding.symmetric(horizontal=12, vertical=10),
-                expand=True
+                expand=True,
+                on_submit=self._add_comment  # Permitir enviar con Enter
             )
 
+            # Área de contenido inicial
             self.content_area = ft.Container(
                 content=ft.Column(
-                    [ft.ProgressRing(), ft.Text("Cargando comentarios...")],
+                    [
+                        ft.ProgressRing(),
+                        ft.Text("Cargando comentarios...")
+                    ],
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                     alignment=ft.MainAxisAlignment.CENTER
                 ),
-                expand=True
+                expand=True,
+                alignment=ft.alignment.center
             )
-            print("--- DEBUG: CommentsWidget.__init__() - Controles base creados.")
 
-            # --- POSIBLE PUNTO DE FALLO ---
-            print("--- DEBUG: CommentsWidget.__init__() - Creando VideoInteractionWidget...")
+            print("--- DEBUG: Creando VideoInteractionWidget...")
             interaction_widget = VideoInteractionWidget(
                 page=self.page,
                 video_id=self.video_id,
                 id_usuario=self.id_usuario
             )
-            print("--- DEBUG: CommentsWidget.__init__() - VideoInteractionWidget CREADO.")
-            # --- FIN POSIBLE PUNTO DE FALLO ---
+            print("--- DEBUG: VideoInteractionWidget creado.")
 
-
+            # Configurar controles
             self.controls = [
-                ft.Text("Comentarios", size=20, weight=ft.FontWeight.BOLD),
+                ft.Row([
+                    ft.Text("Comentarios", size=20, weight=ft.FontWeight.BOLD),
+                    ft.IconButton(
+                        icon=ft.Icons.CLOSE,
+                        on_click=self._close_bottom_sheet,
+                        tooltip="Cerrar"
+                    )
+                ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                 ft.Container(height=12),
-                interaction_widget, # Usamos la variable
+                interaction_widget,
                 ft.Container(height=12),
                 ft.Divider(height=1),
-                self.content_area,  # Área para la lista de comentarios
+                ft.Container(
+                    content=self.content_area,
+                    expand=True
+                ),
                 ft.Divider(height=1),
                 ft.Row(
                     controls=[
@@ -72,14 +91,19 @@ class CommentsWidget(ft.Column):
                     spacing=8
                 ),
             ]
+
             print("--- DEBUG: CommentsWidget.__init__() - FINALIZADO CON ÉXITO ---")
 
         except Exception as e:
-            # --- ¡¡AQUÍ CAZAREMOS EL ERROR DEL CONSTRUCTOR!! ---
-            print(f"\n\n¡¡¡ERROR CATASTRÓFICO EN CommentsWidget.__init__!!!")
+            print(f"\n\n¡¡¡ERROR en CommentsWidget.__init__!!!")
             print(f"Error: {e}")
             traceback.print_exc()
 
+    def _close_bottom_sheet(self, e=None):
+        """Cierra el BottomSheet"""
+        if hasattr(self.page, 'bottom_sheet') and self.page.bottom_sheet:
+            self.page.bottom_sheet.open = False
+            self.page.update()
 
     def did_mount(self):
         print("--- DEBUG: CommentsWidget.did_mount() - INICIANDO ---")
