@@ -58,10 +58,11 @@ class PreguntasScreen(ft.Column):
             ids_temas = list({p['ID_Tema'] for p in preguntas_limitadas})
             print(f"--- DEBUG (Preguntas): IDs de temas encontrados: {ids_temas} ---")
 
-            # SOLUCIÓN: Si no existe get_nombres_temas_por_ids, lo simulamos
+            # Obtener nombres de temas
             nombres_temas = {}
             try:
                 nombres_temas = self.db_helper.get_nombres_temas_por_ids(ids_temas)
+                print(f"--- DEBUG (Preguntas): Nombres de temas obtenidos: {nombres_temas} ---")
             except Exception as e:
                 print(f"--- DEBUG (Preguntas): Falló get_nombres_temas_por_ids, usando alternativa: {e} ---")
                 # Alternativa: obtener nombres uno por uno
@@ -75,13 +76,18 @@ class PreguntasScreen(ft.Column):
             # Preparar preguntas
             for p in preguntas_limitadas:
                 correcta_texto = p['Opcion_Correcta']
+
+                # Crear lista de opciones (solo incluir opciones no vacías)
                 opciones = [p['Opcion_A'], p['Opcion_B'], correcta_texto]
 
-                # Asegurarnos de que hay 3 opciones únicas
-                if p['Opcion_C'] and p['Opcion_C'].strip():
+                # Solo agregar Opcion_C si existe y no está vacía
+                if 'Opcion_C' in p and p['Opcion_C'] and p['Opcion_C'].strip():
                     opciones.append(p['Opcion_C'])
 
+                # Eliminar duplicados y mezclar
+                opciones = list(set(opciones))  # Remover duplicados
                 random.shuffle(opciones)
+
                 p['opciones_mezcladas'] = opciones
                 p['_respuesta_correcta_texto'] = correcta_texto
                 p['Nombre_Tema'] = nombres_temas.get(p['ID_Tema'], 'Desconocido')

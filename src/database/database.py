@@ -1,7 +1,9 @@
 import sqlite3
 import os
-#import uuid
-#import datetime
+
+
+# import uuid
+# import datetime
 
 
 class DatabaseHelper:
@@ -173,7 +175,7 @@ class DatabaseHelper:
 
     def get_preguntas_por_id_area_activo(self, id_area):
         return self._execute_query(
-            "SELECT ID_Pregunta, Pregunta, Opcion_A, Opcion_B, Opcion_Correcta, Comentario, ID_Tema FROM Pregunta WHERE ID_Area = ? AND Estado = 'Activo' AND ID_Tema != 'No aplica'",
+            "SELECT ID_Pregunta, Pregunta, Opcion_A, Opcion_B, Opcion_C, Opcion_Correcta, Comentario, ID_Tema FROM Pregunta WHERE ID_Area = ? AND Estado = 'Activo' AND ID_Tema != 'No aplica'",
             (id_area,))
 
     def get_nombres_temas_por_ids(self, ids_tema: list):
@@ -181,6 +183,10 @@ class DatabaseHelper:
         placeholders = ','.join('?' for _ in ids_tema)
         rows = self._execute_query(f"SELECT ID_Tema, Nombre FROM Tema WHERE ID_Tema IN ({placeholders})", ids_tema)
         return {row['ID_Tema']: row['Nombre'] for row in rows}
+
+    def get_tema_by_id(self, id_tema):
+        rows = self._execute_query("SELECT * FROM Tema WHERE ID_Tema = ?", (id_tema,))
+        return rows[0] if rows else None
 
     def get_simuladores_con_area_by_id_carrera(self, id_carrera):
         query = "SELECT s.*, ar.Nombre as NombreArea FROM Simulador s JOIN Area ar ON s.ID_Area = ar.ID_Area WHERE s.ID_Carrera = ? AND s.Estado = 'Activo'"
@@ -265,8 +271,11 @@ class DatabaseHelper:
             (reaction_id, video_id, user_id, tipo))
 
     def update_video_counter(self, video_id, field, delta):
-        if field in ['Cantidad_Likes', 'Cantidad_Dislikes']: self._execute_commit(
-            f"UPDATE Video SET {field} = MAX(0, {field} + ?) WHERE ID_Video = ?", (delta, video_id))
+        if field in ['Cantidad_Likes', 'Cantidad_Dislikes']:
+            self._execute_commit(
+                f"UPDATE Video SET {field} = MAX(0, {field} + ?) WHERE ID_Video = ?",
+                (delta, video_id)
+            )
 
     def add_comment(self, comment_id, video_id, user_id, comment_text):
         self._execute_commit(
@@ -289,3 +298,132 @@ class DatabaseHelper:
                 (id_resultado, calificacion, tiempo, fecha, id_tema, id_usuario, id_simulador))
         conn.commit()
         conn.close()
+
+    # --- Métodos adicionales para estadísticas ---
+    def get_estadisticas_usuario(self, id_usuario):
+        """Obtiene estadísticas del usuario"""
+        query = """
+        SELECT 
+            COUNT(DISTINCT r.ID_Simulador) as simuladores_completados,
+            AVG(r.Calificacion) as promedio_general,
+            SUM(r.Tiempo) as tiempo_total
+        FROM Resultado r 
+        WHERE r.ID_Usuario = ?
+        """
+        rows = self._execute_query(query, (id_usuario,))
+        return rows[0] if rows else None
+
+    def get_progreso_por_area(self, id_usuario, id_carrera):
+        """Obtiene el progreso del usuario por área"""
+        query = """
+        SELECT 
+            a.ID_Area,
+            a.Nombre as nombre_area,
+            COUNT(DISTINCT r.ID_Tema) as temas_completados,
+            COUNT(DISTINCT t.ID_Tema) as total_temas,
+            AVG(r.Calificacion) as promedio_area
+        FROM Area a
+        LEFT JOIN Tema t ON a.ID_Area = t.ID_Area
+        LEFT JOIN Resultado r ON t.ID_Tema = r.ID_Tema AND r.ID_Usuario = ?
+        WHERE a.ID_Carrera = ? AND a.Estado = 'Activo'
+        GROUP BY a.ID_Area, a.Nombre
+        """
+        return self._execute_query(query, (id_usuario, id_carrera))
+
+    def get_historial_simuladores(self, id_usuario):
+        """Obtiene el historial de simuladores del usuario"""
+        query = """
+        SELECT 
+            r.Fecha,
+            s.ID_Simulador,
+            a.Nombre as area,
+            r.Calificacion,
+            r.Tiempo
+        FROM Resultado r
+        JOIN Simulador s ON r.ID_Simulador = s.ID_Simulador
+        JOIN Area a ON s.ID_Area = a.ID_Area
+        WHERE r.ID_Usuario = ?
+        ORDER BY r.Fecha DESC
+        LIMIT 10
+        """
+        return self._execute_query(query, (id_usuario,))
+
+    # --- Métodos para limpieza y mantenimiento ---
+    def limpiar_datos_temporales(self):
+        """Limpia datos temporales o antiguos"""
+        # Ejemplo: eliminar reacciones y comentarios de usuarios anónimos antiguos
+        queries = [
+            "DELETE FROM Reaccion WHERE Estado = 'Inactivo'",
+            "DELETE FROM Comentario WHERE Estado = 'Inactivo'",
+            "DELETE FROM Usuario WHERE ID_Usuario NOT IN (SELECT DISTINCT ID_Usuario FROM Resultado) AND ID_Usuario NOT IN (SELECT DISTINCT ID_Usuario FROM Reaccion) AND ID_Usuario NOT IN (SELECT DISTINCT ID_Usuario FROM Comentario)"
+        ]
+
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        for query in queries:
+            try:
+                cursor.execute(query)
+            except Exception as e:
+                print(f"Error en limpieza: {e}")
+        conn.commit()
+        conn.close()
+
+    def backup_database(self, backup_path):
+        """Crea una copia de seguridad de la base de datos"""
+        import shutil
+        try:
+            shutil.copy2(self.db_path, backup_path)
+            return True
+        except Exception as e:
+            print(f"Error en backup: {e}")
+            return False
+
+    # --- Métodos de validación ---
+    def verificar_integridad(self):
+        """Verifica la integridad de la base de datos"""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+
+        # Verificar claves foráneas
+        cursor.execute("PRAGMA foreign_key_check")
+        foreign_key_issues = cursor.fetchall()
+
+        # Verificar integridad de la estructura
+        cursor.execute("PRAGMA integrity_check")
+        integrity_check = cursor.fetchone()[0]
+
+        conn.close()
+
+        return {
+            'integrity_check': integrity_check,
+            'foreign_key_issues': foreign_key_issues,
+            'is_valid': integrity_check == 'ok' and not foreign_key_issues
+        }
+
+    # --- Métodos para administración ---
+    def obtener_estadisticas_globales(self):
+        """Obtiene estadísticas globales del sistema"""
+        queries = {
+            'total_usuarios': "SELECT COUNT(*) as count FROM Usuario",
+            'total_videos': "SELECT COUNT(*) as count FROM Video WHERE Estado = 'Activo'",
+            'total_preguntas': "SELECT COUNT(*) as count FROM Pregunta WHERE Estado = 'Activo'",
+            'total_simuladores': "SELECT COUNT(*) as count FROM Simulador WHERE Estado = 'Activo'",
+            'total_resultados': "SELECT COUNT(*) as count FROM Resultado",
+            'promedio_calificacion': "SELECT AVG(Calificacion) as avg FROM Resultado"
+        }
+
+        stats = {}
+        conn = self._get_connection()
+        cursor = conn.cursor()
+
+        for key, query in queries.items():
+            try:
+                cursor.execute(query)
+                result = cursor.fetchone()
+                stats[key] = result[0] if result[0] is not None else 0
+            except Exception as e:
+                print(f"Error en estadística {key}: {e}")
+                stats[key] = 0
+
+        conn.close()
+        return stats
