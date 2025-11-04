@@ -1,6 +1,7 @@
 import flet as ft
 from src.database.database import DatabaseHelper
 
+
 class SimuladorScreen(ft.Column):
     def __init__(self, page: ft.Page, id_carrera: str, id_campus: str, id_usuario: str):
         super().__init__(expand=True)
@@ -13,7 +14,7 @@ class SimuladorScreen(ft.Column):
 
         self.loading_view = ft.Column(
             [ft.ProgressRing(), ft.Text("Cargando simuladores...")],
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,  # <--- CORRECTO
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             alignment=ft.MainAxisAlignment.CENTER,
             expand=True
         )
@@ -42,11 +43,21 @@ class SimuladorScreen(ft.Column):
 
         if not simuladores:
             print("--- DEBUG (Simulador): No Simuladores found. Displaying message. ---")
-            self.content_area.content = ft.Text("No hay simuladores disponibles para esta carrera.",
-                                                text_align=ft.TextAlign.CENTER)
+            self.content_area.content = ft.Column(
+                [
+                    ft.Icon(ft.Icons.QUIZ_OUTLINED, size=64, color=ft.Colors.BLUE_900),
+                    ft.Text("No hay simuladores disponibles para esta carrera.",
+                            text_align=ft.TextAlign.CENTER, size=18),
+                    ft.Text("Vuelve más tarde o contacta con tu administrador.",
+                            text_align=ft.TextAlign.CENTER, size=14, color=ft.Colors.GREY_600)
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                alignment=ft.MainAxisAlignment.CENTER,
+                expand=True
+            )
         else:
             print("--- DEBUG (Simulador): Building ListView for Simuladores. ---")
-            list_view = ft.ListView(expand=True, spacing=10, padding=50)
+            list_view = ft.ListView(expand=True, spacing=20, padding=20)
             for sim in simuladores:
                 list_view.controls.append(self.create_card(sim))
             self.content_area.content = list_view
@@ -57,43 +68,138 @@ class SimuladorScreen(ft.Column):
         card_data = {
             'id_area': simulador['ID_Area'],
             'longitud': simulador['Longitud'],
-            'id_simulador': simulador['ID_Simulador']
+            'id_simulador': simulador['ID_Simulador'],
+            'nombre_area': simulador.get('NombreArea', 'Área Desconocida')
         }
 
-        return ft.Card(
-            data=card_data,
-            #on_click=self._on_card_click,
-            elevation=6,
-            content=ft.Container(
-                padding=16,
-                border_radius=12,
-                border=ft.border.all(2, ft.Colors.BLUE_900),
-                content=ft.Column(
-                    # CORRECCIÓN: usar horizontal_alignment en lugar de cross_alignment
-                    horizontal_alignment=ft.CrossAxisAlignment.START,
-                    controls=[
-                        ft.Text(
-                            f"{simulador.get('NombreArea', 'Área Desconocida')} - {simulador['ID_Area']}",
-                            size=23, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_900
-                        ),
-                        ft.Divider(height=4, color=ft.Colors.BLUE_GREY_100, thickness=2),
-                        ft.Text(f"ID Simulador: {simulador['ID_Simulador']}", size=16),
-                    ]
+        # Crear tarjeta con efecto hover
+        return ft.Container(
+            margin=ft.margin.symmetric(vertical=5),
+            content=ft.Card(
+                elevation=4,
+                content=ft.GestureDetector(
+                    mouse_cursor=ft.MouseCursor.CLICK,
+                    on_tap=lambda e, data=card_data: self._on_card_click(data),
+                    on_hover=lambda e: self._on_card_hover(e),
+                    content=ft.Container(
+                        padding=20,
+                        border_radius=12,
+                        border=ft.border.all(2, ft.Colors.BLUE_900),
+                        bgcolor=ft.Colors.WHITE,
+                        content=ft.Column(
+                            horizontal_alignment=ft.CrossAxisAlignment.START,
+                            spacing=10,
+                            controls=[
+                                # Header con ícono y título
+                                ft.Row(
+                                    controls=[
+                                        ft.Icon(
+                                            ft.Icons.QUIZ,
+                                            color=ft.Colors.BLUE_900,
+                                            size=28
+                                        ),
+                                        ft.Text(
+                                            simulador.get('NombreArea', 'Área Desconocida'),
+                                            size=20,
+                                            weight=ft.FontWeight.BOLD,
+                                            color=ft.Colors.BLUE_900,
+                                            expand=True
+                                        ),
+                                    ]
+                                ),
+
+                                ft.Divider(height=1, color=ft.Colors.BLUE_GREY_200),
+
+                                # Información del simulador
+                                ft.Column(
+                                    spacing=8,
+                                    controls=[
+                                        ft.Row(
+                                            controls=[
+                                                ft.Icon(ft.Icons.FACT_CHECK, size=16, color=ft.Colors.BLUE_700),
+                                                ft.Text(f"Simulador: {simulador['ID_Simulador']}",
+                                                        size=14, color=ft.Colors.GREY_700),
+                                            ]
+                                        ),
+                                        ft.Row(
+                                            controls=[
+                                                ft.Icon(ft.Icons.QUESTION_ANSWER, size=16, color=ft.Colors.BLUE_700),
+                                                ft.Text(f"Preguntas: {simulador['Longitud']}",
+                                                        size=14, color=ft.Colors.GREY_700),
+                                            ]
+                                        ),
+                                    ]
+                                ),
+
+                                # Botón de acción
+                                ft.Container(
+                                    padding=ft.padding.only(top=10),
+                                    content=ft.Row(
+                                        controls=[
+                                            ft.Text(
+                                                "Comenzar simulador →",
+                                                color=ft.Colors.BLUE_900,
+                                                weight=ft.FontWeight.BOLD,
+                                                size=14
+                                            ),
+                                        ],
+                                        alignment=ft.MainAxisAlignment.END
+                                    )
+                                )
+                            ]
+                        )
+                    )
                 )
             )
         )
 
-    def _on_card_click(self, e):
-        from src.screens.preguntas_screen import PreguntasScreen
-        sim_data = e.control.data
-        print(f"--- DEBUG (Simulador): Card clicked. Navigating to PreguntasScreen with data: {sim_data} ---")
-        self.page.clean()
-        self.page.add(
-            PreguntasScreen(
-                page=self.page,
-                id_area=sim_data['id_area'],
-                longitud=sim_data['longitud'],
-                id_usuario=self.id_usuario,
-                id_simulador=sim_data['id_simulador']
+    def _on_card_hover(self, e):
+        """Efecto hover para las tarjetas"""
+        if e.data == "true":
+            e.control.content.bgcolor = ft.Colors.BLUE_50
+        else:
+            e.control.content.bgcolor = ft.Colors.WHITE
+        e.control.update()
+
+    def _on_card_click(self, card_data):
+        """Maneja el clic en la tarjeta"""
+        try:
+            print(f"--- DEBUG (Simulador): Card clicked. Data: {card_data} ---")
+
+            from src.screens.preguntas_screen import PreguntasScreen
+
+            # Mostrar loading mientras se carga
+            self.content_area.content = ft.Column(
+                [
+                    ft.ProgressRing(),
+                    ft.Text("Cargando preguntas...", size=16),
+                    ft.Text(f"Simulador: {card_data['id_simulador']}",
+                            size=14, color=ft.Colors.GREY_600)
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                alignment=ft.MainAxisAlignment.CENTER,
+                expand=True
             )
-        )
+            self.update()
+
+            # Navegar a la pantalla de preguntas
+            self.page.clean()
+            nueva_pantalla = PreguntasScreen(
+                page=self.page,
+                id_area=card_data['id_area'],
+                longitud=card_data['longitud'],
+                id_usuario=self.id_usuario,
+                id_simulador=card_data['id_simulador']
+            )
+            self.page.add(nueva_pantalla)
+            print("--- DEBUG (Simulador): Navigation to PreguntasScreen completed ---")
+
+        except Exception as ex:
+            print(f"--- DEBUG (Simulador): ERROR in _on_card_click: {ex} ---")
+            # Mostrar error al usuario
+            self.page.show_snack_bar(
+                ft.SnackBar(
+                    content=ft.Text(f"Error al cargar el simulador: {str(ex)}"),
+                    action="OK"
+                )
+            )
