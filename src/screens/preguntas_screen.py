@@ -29,14 +29,26 @@ class PreguntasScreen(ft.Column):
             expand=True
         )
         self.submit_button = ft.ElevatedButton(
-            "Enviar", on_click=self._mostrar_resultado_popup, disabled=True
+            "Enviar Respuestas",
+            on_click=self._mostrar_resultado_popup,
+            disabled=True,
+            icon=ft.Icons.SEND,
+            style=ft.ButtonStyle(
+                bgcolor=ft.Colors.BLUE_900,
+                color=ft.Colors.WHITE,
+                padding=ft.padding.symmetric(horizontal=30, vertical=15)
+            )
         )
 
         self.controls = [self.loading_view]
 
     def did_mount(self):
         print(f"--- DEBUG (Preguntas): Iniciando con id_area='{self.id_area}', longitud={self.longitud} ---")
-        self.page.appbar = ft.AppBar(title=ft.Text("Simulador"))
+        self.page.appbar = ft.AppBar(
+            title=ft.Text("Simulador"),
+            bgcolor=ft.Colors.BLUE_900,
+            color=ft.Colors.WHITE
+        )
         self.page.update()
         self._cargar_preguntas_aleatorias()
 
@@ -65,7 +77,6 @@ class PreguntasScreen(ft.Column):
                 print(f"--- DEBUG (Preguntas): Nombres de temas obtenidos: {nombres_temas} ---")
             except Exception as e:
                 print(f"--- DEBUG (Preguntas): Falló get_nombres_temas_por_ids, usando alternativa: {e} ---")
-                # Alternativa: obtener nombres uno por uno
                 for id_tema in ids_temas:
                     tema = self.db_helper.get_tema_by_id(id_tema)
                     if tema:
@@ -85,7 +96,7 @@ class PreguntasScreen(ft.Column):
                     opciones.append(p['Opcion_C'])
 
                 # Eliminar duplicados y mezclar
-                opciones = list(set(opciones))  # Remover duplicados
+                opciones = list(set(opciones))
                 random.shuffle(opciones)
 
                 p['opciones_mezcladas'] = opciones
@@ -109,7 +120,7 @@ class PreguntasScreen(ft.Column):
                     ft.Icon(ft.Icons.ERROR_OUTLINE, size=48, color=ft.Colors.RED),
                     ft.Text(mensaje, text_align=ft.TextAlign.CENTER, size=16),
                     ft.ElevatedButton(
-                        "Volver",
+                        "Volver al Simulador",
                         on_click=self._volver_a_simulador,
                         icon=ft.Icons.ARROW_BACK
                     )
@@ -139,25 +150,67 @@ class PreguntasScreen(ft.Column):
             print(f"--- DEBUG (Preguntas): Construyendo vista con {len(self.preguntas)} preguntas ---")
 
             question_widgets = []
+
+            # Header informativo
+            question_widgets.append(
+                ft.Container(
+                    padding=20,
+                    bgcolor=ft.Colors.BLUE_50,
+                    border_radius=10,
+                    margin=ft.margin.only(bottom=20),
+                    content=ft.Column([
+                        ft.Text(f"Simulador: {self.id_simulador}", size=16, weight=ft.FontWeight.BOLD),
+                        ft.Text(f"Total de preguntas: {len(self.preguntas)}", size=14),
+                        ft.Text("Responde todas las preguntas para poder enviar", size=12, color=ft.Colors.GREY_600),
+                    ])
+                )
+            )
+
             for i, p in enumerate(self.preguntas):
                 # Título de la pregunta
                 question_widgets.append(
                     ft.Container(
-                        padding=10,
+                        padding=15,
+                        border=ft.border.all(1, ft.Colors.GREY_300),
+                        border_radius=8,
+                        margin=ft.margin.only(bottom=15),
                         content=ft.Column([
-                            ft.Text(f"{i + 1}. {p['Pregunta']}",
-                                    weight=ft.FontWeight.BOLD, size=18),
-                            ft.Text(f"Tema: {p['Nombre_Tema']}",
-                                    size=14, color=ft.Colors.GREY),
+                            ft.Row([
+                                ft.Container(
+                                    width=30,
+                                    height=30,
+                                    border_radius=15,
+                                    bgcolor=ft.Colors.BLUE_900,
+                                    alignment=ft.alignment.center,
+                                    content=ft.Text(f"{i + 1}", color=ft.Colors.WHITE, weight=ft.FontWeight.BOLD)
+                                ),
+                                ft.Text(f"{p['Pregunta']}",
+                                        weight=ft.FontWeight.BOLD, size=16, expand=True),
+                            ]),
+                            ft.Container(
+                                padding=ft.padding.only(left=35),
+                                content=ft.Text(f"Tema: {p['Nombre_Tema']}",
+                                                size=14, color=ft.Colors.GREY_600),
+                            ),
                         ])
                     )
                 )
 
-                # Opciones de respuesta
+                # Opciones de respuesta - CORREGIDO: usar solo el texto de la opción
                 opciones_radio = ft.RadioGroup(
                     content=ft.Column([
-                        ft.Radio(value=opt, label=ft.Text(opt)) for opt in p['opciones_mezcladas']
-                    ], spacing=5),
+                        ft.Container(
+                            margin=ft.margin.only(bottom=8),
+                            padding=10,
+                            border=ft.border.all(1, ft.Colors.GREY_200),
+                            border_radius=6,
+                            content=ft.Radio(
+                                value=opt,  # Solo el valor del texto
+                                label=ft.Text(opt, size=14),  # Solo mostrar el texto
+                                fill_color=ft.Colors.BLUE_900
+                            )
+                        ) for opt in p['opciones_mezcladas']
+                    ], spacing=0),
                     on_change=lambda e, index=i: self._on_option_selected(index, e.control.value)
                 )
                 question_widgets.append(opciones_radio)
@@ -167,9 +220,17 @@ class PreguntasScreen(ft.Column):
             question_widgets.append(
                 ft.Container(
                     padding=20,
-                    content=ft.Row([
-                        self.submit_button
-                    ], alignment=ft.MainAxisAlignment.CENTER)
+                    content=ft.Column([
+                        ft.Divider(),
+                        ft.Row([
+                            ft.Text(
+                                f"Progreso: {len(self.opciones_seleccionadas)}/{len(self.preguntas)} preguntas respondidas",
+                                size=14,
+                                color=ft.Colors.GREY_600
+                            ),
+                            self.submit_button
+                        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
+                    ])
                 )
             )
 
@@ -186,13 +247,12 @@ class PreguntasScreen(ft.Column):
     def _on_option_selected(self, question_index, selected_value):
         self.opciones_seleccionadas[question_index] = selected_value
         # Habilitar botón si todas las preguntas tienen respuesta
-        if len(self.opciones_seleccionadas) == len(self.preguntas):
-            self.submit_button.disabled = False
+        self.submit_button.disabled = len(self.opciones_seleccionadas) < len(self.preguntas)
         self.update()
 
     def _mostrar_resultado_popup(self, e):
         try:
-            print("--- DEBUG (Preguntas): Mostrando resultados ---")
+            print("--- DEBUG (Preguntas): Calculando resultados ---")
             fin_tiempo = time.time()
             tiempo_total = int(fin_tiempo - self.inicio_tiempo)
 
@@ -202,7 +262,7 @@ class PreguntasScreen(ft.Column):
             total_por_tema = {}
 
             for i, p in enumerate(self.preguntas):
-                seleccion = self.opciones_seleccionadas.get(i)
+                seleccion = self.opciones_seleccionadas.get(i, "No respondida")
                 es_correcta = seleccion == p['_respuesta_correcta_texto']
 
                 if es_correcta:
@@ -213,27 +273,40 @@ class PreguntasScreen(ft.Column):
                 if es_correcta:
                     aciertos_por_tema[id_tema] = aciertos_por_tema.get(id_tema, 0) + 1
 
+                # Detalle de cada respuesta
                 detalles_respuestas.append(
                     ft.Container(
-                        padding=8,
+                        padding=12,
                         margin=ft.margin.symmetric(vertical=4),
                         bgcolor=ft.Colors.GREEN_50 if es_correcta else ft.Colors.RED_50,
                         border=ft.border.all(2, ft.Colors.GREEN if es_correcta else ft.Colors.RED),
                         border_radius=8,
                         content=ft.Column([
-                            ft.Text(f"{i + 1}. {p['Pregunta']}", weight=ft.FontWeight.BOLD, size=14),
-                            ft.Text(f"Tu respuesta: {seleccion or 'No respondida'}", size=12),
+                            ft.Row([
+                                ft.Icon(
+                                    ft.Icons.CHECK_CIRCLE if es_correcta else ft.Icons.CANCEL,
+                                    color=ft.Colors.GREEN if es_correcta else ft.Colors.RED,
+                                    size=20
+                                ),
+                                ft.Text(f"Pregunta {i + 1}", weight=ft.FontWeight.BOLD, size=14, expand=True),
+                            ]),
+                            ft.Text(f"Tu respuesta: {seleccion}", size=12),
                             ft.Text(f"Respuesta correcta: {p['_respuesta_correcta_texto']}", size=12,
-                                    color=ft.Colors.GREEN),
-                        ], spacing=4)
+                                    color=ft.Colors.GREEN, weight=ft.FontWeight.BOLD),
+                        ], spacing=6)
                     )
                 )
 
-            # Guardar resultados
+            # Guardar resultados en la base de datos
+            print("--- DEBUG (Preguntas): Guardando resultados en BD ---")
             fecha_actual = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
             for id_tema, total in total_por_tema.items():
                 aciertos = aciertos_por_tema.get(id_tema, 0)
                 porcentaje = (aciertos / total) * 100 if total > 0 else 0
+
+                print(f"--- DEBUG (Preguntas): Guardando tema {id_tema} - {aciertos}/{total} = {porcentaje:.1f}% ---")
+
                 self.db_helper.guardar_calificacion_por_tema(
                     id_usuario=self.id_usuario,
                     id_tema=id_tema,
@@ -244,44 +317,101 @@ class PreguntasScreen(ft.Column):
                     fecha=fecha_actual
                 )
 
-            # Mostrar resultados
+            # Calcular porcentaje total
             porcentaje_total = (correctas / len(self.preguntas)) * 100
 
+            # Determinar color según el resultado - CORREGIDO
+            color_resultado = ft.Colors.GREEN if porcentaje_total >= 70 else ft.Colors.ORANGE if porcentaje_total >= 50 else ft.Colors.RED
+            icono_resultado = ft.Icons.EMOJI_EVENTS if porcentaje_total >= 70 else ft.Icons.WARNING if porcentaje_total >= 50 else ft.Icons.SENTIMENT_DISSATISFIED
+
+            print(
+                f"--- DEBUG (Preguntas): Resultado final: {correctas}/{len(self.preguntas)} = {porcentaje_total:.1f}% ---")
+
+            # Crear función para cerrar y volver
             def close_and_go_back(e):
-                self.page.bottom_sheet.open = False
-                self.page.update()
+                print("--- DEBUG (Preguntas): Cerrando resultados y volviendo al simulador ---")
+                if hasattr(self.page, 'bottom_sheet') and self.page.bottom_sheet:
+                    self.page.bottom_sheet.open = False
+                    self.page.update()
                 self._volver_a_simulador()
 
-            self.page.bottom_sheet = ft.BottomSheet(
+            # Crear el BottomSheet de resultados - CORREGIDO: sin with_opacity
+            bottom_sheet_content = ft.BottomSheet(
                 ft.Container(
                     padding=20,
                     height=600,
                     content=ft.Column([
-                        ft.Text(
-                            f"Resultado: {correctas}/{len(self.preguntas)} ({porcentaje_total:.1f}%)",
-                            size=20,
-                            weight=ft.FontWeight.BOLD,
-                            color=ft.Colors.BLUE_900
-                        ),
-                        ft.Text(f"Tiempo: {tiempo_total} segundos", size=14),
-                        ft.Divider(height=20),
-                        ft.Text("Detalle de respuestas:", weight=ft.FontWeight.BOLD),
+                        # Header del resultado
                         ft.Container(
-                            content=ft.Column(
-                                controls=detalles_respuestas,
-                                scroll=ft.ScrollMode.ADAPTIVE
-                            ),
-                            height=400,
-                            expand=True
+                            padding=20,
+                            bgcolor=ft.Colors.BLUE_50,  # Color fijo sin opacity
+                            border_radius=12,
+                            content=ft.Row([
+                                ft.Icon(icono_resultado, color=color_resultado, size=32),
+                                ft.Column([
+                                    ft.Text(
+                                        f"Resultado: {correctas}/{len(self.preguntas)}",
+                                        size=24,
+                                        weight=ft.FontWeight.BOLD,
+                                        color=color_resultado
+                                    ),
+                                    ft.Text(
+                                        f"Calificación: {porcentaje_total:.1f}%",
+                                        size=18,
+                                        color=color_resultado
+                                    ),
+                                ], expand=True)
+                            ])
                         ),
-                        ft.ElevatedButton("Volver al Simulador", on_click=close_and_go_back)
-                    ])
+
+                        ft.Text(f"Tiempo total: {tiempo_total} segundos", size=14, color=ft.Colors.GREY_600),
+                        ft.Divider(height=20),
+
+                        # Detalle de respuestas
+                        ft.Text("Detalle de respuestas:", weight=ft.FontWeight.BOLD, size=16),
+                        ft.Container(
+                            content=ft.ListView(
+                                controls=detalles_respuestas,
+                                expand=True,
+                                spacing=4
+                            ),
+                            height=300,
+                        ),
+
+                        # Botón de acción
+                        ft.Container(
+                            padding=ft.padding.only(top=20),
+                            content=ft.ElevatedButton(
+                                "Volver al Simulador",
+                                on_click=close_and_go_back,
+                                icon=ft.Icons.ARROW_BACK,
+                                style=ft.ButtonStyle(
+                                    bgcolor=ft.Colors.BLUE_900,
+                                    color=ft.Colors.WHITE,
+                                    padding=ft.padding.symmetric(horizontal=30, vertical=15)
+                                )
+                            )
+                        )
+                    ], scroll=ft.ScrollMode.ADAPTIVE)
                 ),
-                open=True
+                open=True,
+                on_dismiss=lambda _: print("--- DEBUG (Preguntas): BottomSheet cerrado ---")
             )
+
+            # Mostrar el BottomSheet
+            self.page.overlay.append(bottom_sheet_content)
+            self.page.bottom_sheet = bottom_sheet_content
             self.page.update()
+
+            print("--- DEBUG (Preguntas): Resultados mostrados exitosamente ---")
 
         except Exception as ex:
             print(f"--- DEBUG (Preguntas): ERROR en _mostrar_resultado_popup: {ex} ---")
             traceback.print_exc()
-            self.page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Error al mostrar resultados: {str(ex)}")))
+            # CORREGIDO: usar show_snack_bar correctamente
+            self.page.show_snack_bar(
+                ft.SnackBar(
+                    content=ft.Text(f"Error al mostrar resultados: {str(ex)}"),
+                    bgcolor=ft.Colors.RED
+                )
+            )
