@@ -194,14 +194,14 @@ class InicioScreen(ft.Column):
         # 1. Creamos la lista de medios
         media = [fv.VideoMedia(video_path)]
 
-        # 2. Creamos un objeto de video COMPLETAMENTE NUEVO
+        # 2. Objeto de video NUEVO
         new_video_player = fv.Video(
-            playlist=media,  # <--- Pasamos la media al crearlo
-            autoplay=True,  # <--- Dejamos que él se reproduzca solo
+            playlist=media,  # Pasamos la media al crearlo
+            autoplay=True,  # Hay que dejar que se reproduzca solo
             width=360,
             height=240,
             show_controls=True,
-            on_completed=self._on_video_ended  # <--- ¡Reactivado!
+            on_completed=self._on_video_ended
         )
 
         # 3. Guardamos la nueva referencia y la reemplazamos en el layout
