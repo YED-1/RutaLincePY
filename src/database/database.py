@@ -175,7 +175,7 @@ class DatabaseHelper:
 
     def get_preguntas_por_id_area_activo(self, id_area):
         return self._execute_query(
-            "SELECT ID_Pregunta, Pregunta, Opcion_A, Opcion_B, Opcion_C, Opcion_Correcta, Comentario, ID_Tema FROM Pregunta WHERE ID_Area = ? AND Estado = 'Activo' AND ID_Tema != 'No aplica'",
+            "SELECT ID_Pregunta, Pregunta, Opcion_A, Opcion_B, Opcion_C, Opcion_Correcta, Comentario_A, Comentario_B, Comentario_C, Comentario_Correcta, ID_Tema FROM Pregunta WHERE ID_Area = ? AND Estado = 'Activo' AND ID_Tema != 'No aplica'",
             (id_area,))
 
     def get_nombres_temas_por_ids(self, ids_tema: list):
