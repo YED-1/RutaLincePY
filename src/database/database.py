@@ -35,7 +35,7 @@ class DatabaseHelper:
             '''CREATE TABLE IF NOT EXISTS Comentario (ID_Comentario TEXT PRIMARY KEY, Comentario TEXT, Fecha DATE, Estado TEXT, ID_Usuario TEXT, ID_Video TEXT, FOREIGN KEY (ID_Usuario) REFERENCES Usuario(ID_Usuario), FOREIGN KEY (ID_Video) REFERENCES Video(ID_Video))''',
             '''CREATE TABLE IF NOT EXISTS Simulador (ID_Simulador TEXT PRIMARY KEY, Longitud INTEGER, Estado TEXT, ID_Carrera TEXT, ID_Area TEXT, FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera), FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area))''',
             '''CREATE TABLE IF NOT EXISTS Resultado (ID_Resultado TEXT PRIMARY KEY, Calificacion REAL, Tiempo INTEGER, Fecha TEXT, ID_Tema TEXT, ID_Usuario TEXT, ID_Simulador TEXT, FOREIGN KEY (ID_Tema) REFERENCES Tema(ID_Tema), FOREIGN KEY (ID_Usuario) REFERENCES Usuario(ID_Usuario), FOREIGN KEY (ID_Simulador) REFERENCES Simulador(ID_Simulador))''',
-            '''CREATE TABLE IF NOT EXISTS Pregunta (ID_Pregunta TEXT PRIMARY KEY, Pregunta TEXT, Opcion_A TEXT, Opcion_B TEXT, Opcion_C TEXT, Opcion_Correcta TEXT, Comentario TEXT, Estado TEXT, ID_Video TEXT, ID_Area TEXT, ID_Tema TEXT, FOREIGN KEY (ID_Video) REFERENCES Video(ID_Video), FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area), FOREIGN KEY (ID_Tema) REFERENCES Tema(ID_Tema))''',
+            '''CREATE TABLE IF NOT EXISTS Pregunta (ID_Pregunta TEXT PRIMARY KEY, Pregunta TEXT, Opcion_A TEXT, Opcion_B TEXT, Opcion_C TEXT, Opcion_Correcta TEXT, Comentario_A TEXT, Comentario_B TEXT, Comentario_C TEXT, Comentario_Correcta TEXT, Estado TEXT, ID_Video TEXT, ID_Area TEXT, ID_Tema TEXT, FOREIGN KEY (ID_Video) REFERENCES Video(ID_Video), FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area), FOREIGN KEY (ID_Tema) REFERENCES Tema(ID_Tema))''',
             '''CREATE TABLE IF NOT EXISTS Sopa (ID_Sopa TEXT PRIMARY KEY, Cantidad_Palabras INTEGER, Estado TEXT, ID_Area TEXT, ID_Carrera TEXT, FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera), FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area))''',
             '''CREATE TABLE IF NOT EXISTS Crucigrama (ID_Crucigrama TEXT PRIMARY KEY, Cantidad_Palabras INTEGER, Estado TEXT, ID_Area TEXT, ID_Carrera TEXT, FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera), FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area))''',
             '''CREATE TABLE IF NOT EXISTS Palabra (ID_Palabra TEXT PRIMARY KEY, Palabra TEXT, Descripción TEXT, Estado TEXT, ID_Area TEXT, ID_Sopa TEXT, ID_Crucigrama TEXT, FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area), FOREIGN KEY (ID_Sopa) REFERENCES Sopa(ID_Sopa), FOREIGN KEY (ID_Crucigrama) REFERENCES Crucigrama(ID_Crucigrama))'''
@@ -100,8 +100,15 @@ class DatabaseHelper:
             (row[0], row[1], row[2], row[3], row[8], row[9]))
 
     def insert_pregunta(self, row):
-        self._execute_commit("INSERT OR IGNORE INTO Pregunta VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                             (row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9], row[10]))
+        if len(row) == 11:
+            # CSV antiguo: agregar columnas de comentarios vacías
+            row = list(row) + ['', '', '', '']  # Comentario_A, Comentario_B, Comentario_C, Comentario_Correcta
+
+        self._execute_commit(
+            "INSERT OR IGNORE INTO Pregunta (ID_Pregunta, Pregunta, Opcion_A, Opcion_B, Opcion_C, Opcion_Correcta, Comentario_A, Comentario_B, Comentario_C, Comentario_Correcta, Estado, ID_Video, ID_Area, ID_Tema) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9], row[10], row[11], row[12],
+             row[13])
+        )
 
     def insert_simulador(self, row):
         self._execute_commit("INSERT OR IGNORE INTO Simulador VALUES (?, ?, ?, ?, ?)",

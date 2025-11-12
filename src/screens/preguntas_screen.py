@@ -196,7 +196,7 @@ class PreguntasScreen(ft.Column):
                     )
                 )
 
-                # Opciones de respuesta - CORREGIDO: usar solo el texto de la opción
+                # Opciones de respuesta
                 opciones_radio = ft.RadioGroup(
                     content=ft.Column([
                         ft.Container(
@@ -205,8 +205,8 @@ class PreguntasScreen(ft.Column):
                             border=ft.border.all(1, ft.Colors.GREY_200),
                             border_radius=6,
                             content=ft.Radio(
-                                value=opt,  # Solo el valor del texto
-                                label=ft.Text(opt, size=14),  # Solo mostrar el texto
+                                value=opt,
+                                label=ft.Text(opt, size=14),
                                 fill_color=ft.Colors.BLUE_900
                             )
                         ) for opt in p['opciones_mezcladas']
@@ -250,6 +250,18 @@ class PreguntasScreen(ft.Column):
         self.submit_button.disabled = len(self.opciones_seleccionadas) < len(self.preguntas)
         self.update()
 
+    def _obtener_comentario_por_opcion(self, pregunta, opcion_seleccionada):
+        """Obtiene el comentario específico para la opción seleccionada"""
+        # Mapear opciones a sus comentarios
+        comentarios_map = {
+            pregunta.get('Opcion_A', ''): pregunta.get('Comentario_A', ''),
+            pregunta.get('Opcion_B', ''): pregunta.get('Comentario_B', ''),
+            pregunta.get('Opcion_C', ''): pregunta.get('Comentario_C', ''),
+            pregunta.get('Opcion_Correcta', ''): pregunta.get('Comentario_Correcta', '¡Respuesta correcta!')
+        }
+
+        return comentarios_map.get(opcion_seleccionada, '')
+
     def _mostrar_resultado_popup(self, e):
         try:
             print("--- DEBUG (Preguntas): Calculando resultados ---")
@@ -273,7 +285,11 @@ class PreguntasScreen(ft.Column):
                 if es_correcta:
                     aciertos_por_tema[id_tema] = aciertos_por_tema.get(id_tema, 0) + 1
 
-                # Detalle de cada respuesta
+                # Obtener comentario basado en la opción seleccionada
+                comentario_seleccion = self._obtener_comentario_por_opcion(p, seleccion)
+                comentario_correcto = p.get('Comentario_Correcta', '¡Respuesta correcta!')
+
+                # Detalle de cada respuesta con comentarios
                 detalles_respuestas.append(
                     ft.Container(
                         padding=12,
@@ -290,9 +306,24 @@ class PreguntasScreen(ft.Column):
                                 ),
                                 ft.Text(f"Pregunta {i + 1}", weight=ft.FontWeight.BOLD, size=14, expand=True),
                             ]),
-                            ft.Text(f"Tu respuesta: {seleccion}", size=12),
-                            ft.Text(f"Respuesta correcta: {p['_respuesta_correcta_texto']}", size=12,
-                                    color=ft.Colors.GREEN, weight=ft.FontWeight.BOLD),
+                            ft.Text(f"Tu respuesta: {seleccion}", size=12, weight=ft.FontWeight.BOLD),
+
+                            # Mostrar comentario específico de la opción seleccionada
+                            ft.Container(
+                                padding=ft.padding.only(left=10, top=5, bottom=5),
+                                content=ft.Column([
+                                    ft.Text("Retroalimentación:", size=12, weight=ft.FontWeight.BOLD,
+                                            color=ft.Colors.BLUE_700),
+                                    ft.Text(
+                                        comentario_seleccion if not es_correcta else comentario_correcto,
+                                        size=11,
+                                        color=ft.Colors.GREY_700
+                                    )
+                                ])
+                            ) if comentario_seleccion or comentario_correcto else ft.Container(),
+
+                            ft.Text(f"Respuesta correcta: {p['_respuesta_correcta_texto']}",
+                                    size=12, color=ft.Colors.GREEN, weight=ft.FontWeight.BOLD),
                         ], spacing=6)
                     )
                 )
@@ -320,7 +351,7 @@ class PreguntasScreen(ft.Column):
             # Calcular porcentaje total
             porcentaje_total = (correctas / len(self.preguntas)) * 100
 
-            # Determinar color según el resultado - CORREGIDO
+            # Determinar color según el resultado
             color_resultado = ft.Colors.GREEN if porcentaje_total >= 70 else ft.Colors.ORANGE if porcentaje_total >= 50 else ft.Colors.RED
             icono_resultado = ft.Icons.EMOJI_EVENTS if porcentaje_total >= 70 else ft.Icons.WARNING if porcentaje_total >= 50 else ft.Icons.SENTIMENT_DISSATISFIED
 
@@ -335,7 +366,7 @@ class PreguntasScreen(ft.Column):
                     self.page.update()
                 self._volver_a_simulador()
 
-            # Crear el BottomSheet de resultados - CORREGIDO: sin with_opacity
+            # Crear el BottomSheet de resultados
             bottom_sheet_content = ft.BottomSheet(
                 ft.Container(
                     padding=20,
@@ -344,7 +375,7 @@ class PreguntasScreen(ft.Column):
                         # Header del resultado
                         ft.Container(
                             padding=20,
-                            bgcolor=ft.Colors.BLUE_50,  # Color fijo sin opacity
+                            bgcolor=ft.Colors.BLUE_50,
                             border_radius=12,
                             content=ft.Row([
                                 ft.Icon(icono_resultado, color=color_resultado, size=32),
@@ -408,7 +439,6 @@ class PreguntasScreen(ft.Column):
         except Exception as ex:
             print(f"--- DEBUG (Preguntas): ERROR en _mostrar_resultado_popup: {ex} ---")
             traceback.print_exc()
-            # CORREGIDO: usar show_snack_bar correctamente
             self.page.show_snack_bar(
                 ft.SnackBar(
                     content=ft.Text(f"Error al mostrar resultados: {str(ex)}"),
