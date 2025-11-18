@@ -1,7 +1,7 @@
 import flet as ft
 from src.screens.seleccionar_sopa_screen import SeleccionarSopaScreen
 from src.screens.seleccionar_crucigrama_screen import SeleccionarCrucigramaScreen
-
+# Pendiente por ahora
 class JuegosScreen(ft.Column):
     def __init__(self, page: ft.Page, id_carrera: str, id_campus: str, id_usuario: str):
         super().__init__(
