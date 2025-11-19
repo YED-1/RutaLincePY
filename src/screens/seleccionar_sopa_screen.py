@@ -10,7 +10,7 @@ class SeleccionarSopaScreen(ft.Column):
         self.id_carrera = id_carrera
         self.db_helper = DatabaseHelper()
 
-        # Contenedor para manejar el estado de carga (como un FutureBuilder)
+        # Contenedor para manejar el estado de carga
         self.loading_view = ft.Column(
             [ft.ProgressRing(), ft.Text("Cargando sopas de letras...")],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -27,11 +27,30 @@ class SeleccionarSopaScreen(ft.Column):
         self._fetch_data()
 
     def _fetch_data(self):
+        print(f"--- DEBUG (SeleccionarSopa): Buscando sopas para id_carrera='{self.id_carrera}' ---")
         sopas = self.db_helper.get_sopas_con_area_by_id_carrera(self.id_carrera)
+        print(f"--- DEBUG (SeleccionarSopa): {len(sopas)} sopas encontradas ---")
 
         if not sopas:
-            self.content_area.content = ft.Text("No hay sopas de letras disponibles para esta carrera.",
-                                                text_align=ft.TextAlign.CENTER)
+            self.content_area.content = ft.Column(
+                [
+                    ft.Icon(ft.Icons.GAMES_OUTLINED, size=48, color=ft.Colors.BLUE_900),
+                    ft.Text(
+                        "No hay sopas de letras disponibles para esta carrera.",
+                        text_align=ft.TextAlign.CENTER,
+                        size=16
+                    ),
+                    ft.Text(
+                        "Vuelve más tarde o contacta con tu administrador.",
+                        text_align=ft.TextAlign.CENTER,
+                        size=14,
+                        color=ft.Colors.GREY_600
+                    )
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                alignment=ft.MainAxisAlignment.CENTER,
+                expand=True
+            )
         else:
             list_view = ft.ListView(expand=True, spacing=10, padding=16)
             for s in sopas:
@@ -41,38 +60,110 @@ class SeleccionarSopaScreen(ft.Column):
         self.update()
 
     def create_card(self, sopa: dict):
-        return ft.Card(
-            # Guardamos los datos que necesitamos en el evento click
-            data={'id': sopa['ID_Sopa'], 'nombre': sopa['NombreArea']},
-            on_click=self._on_card_click,
-            elevation=6,
-            content=ft.Container(
-                padding=16,
-                border_radius=12,
-                border=ft.border.all(2, ft.Colors.BLUE_900),
-                content=ft.Column(
-                    cross_alignment=ft.CrossAxisAlignment.START,
-                    controls=[
-                        ft.Text(
-                            f"{sopa['NombreArea']} - {sopa['ID_Area']}",
-                            size=23,
-                            weight=ft.FontWeight.BOLD,
-                            color=ft.Colors.BLUE_900
-                        ),
-                        ft.Divider(height=4, color=ft.Colors.TEAL_100, thickness=2),
-                        ft.Text(
-                            f"Sopa: {sopa['ID_Sopa']}",
-                            size=18,
-                            weight=ft.FontWeight.BOLD
-                        ),
-                        ft.Text(f"Palabras: {sopa['Cantidad_Palabras']}", size=16),
-                    ]
+        print(f"--- DEBUG (SeleccionarSopa): Creando tarjeta para sopa {sopa['ID_Sopa']} ---")
+
+        card_data = {
+            'id': sopa['ID_Sopa'],
+            'nombre': sopa.get('NombreArea', 'Área Desconocida')
+        }
+
+        # CORRECCIÓN: Envolver el Card en un GestureDetector para hacerlo clickeable
+        return ft.GestureDetector(
+            on_tap=lambda e, data=card_data: self._on_card_click(data),
+            mouse_cursor=ft.MouseCursor.CLICK,
+            content=ft.Card(
+                elevation=6,
+                content=ft.Container(
+                    padding=16,
+                    border_radius=12,
+                    border=ft.border.all(2, ft.Colors.BLUE_900),
+                    content=ft.Column(
+                        horizontal_alignment=ft.CrossAxisAlignment.START,
+                        controls=[
+                            ft.Row(
+                                controls=[
+                                    ft.Icon(ft.Icons.GAMES, color=ft.Colors.BLUE_900),
+                                    ft.Text(
+                                        f"{sopa.get('NombreArea', 'Área Desconocida')}",
+                                        size=20,
+                                        weight=ft.FontWeight.BOLD,
+                                        color=ft.Colors.BLUE_900,
+                                        expand=True
+                                    ),
+                                ]
+                            ),
+                            ft.Divider(height=4, color=ft.Colors.BLUE_GREY_100, thickness=2),
+                            ft.Row(
+                                controls=[
+                                    ft.Icon(ft.Icons.TAG, size=16, color=ft.Colors.BLUE_700),
+                                    ft.Text(f"ID Sopa: {sopa['ID_Sopa']}", size=16),
+                                ]
+                            ),
+                            ft.Row(
+                                controls=[
+                                    ft.Icon(ft.Icons.SPELLCHECK, size=16, color=ft.Colors.BLUE_700),
+                                    ft.Text(f"Palabras: {sopa.get('Cantidad_Palabras', 'N/A')}", size=16),
+                                ]
+                            ),
+                            ft.Container(
+                                padding=ft.padding.only(top=10),
+                                content=ft.Row(
+                                    controls=[
+                                        ft.Text(
+                                            "Jugar ahora →",
+                                            color=ft.Colors.BLUE_900,
+                                            weight=ft.FontWeight.BOLD,
+                                            size=14
+                                        ),
+                                    ],
+                                    alignment=ft.MainAxisAlignment.END
+                                )
+                            )
+                        ]
+                    )
                 )
             )
         )
 
-    def _on_card_click(self, e):
-        id_sopa = e.control.data['id']
-        nombre_area = e.control.data['nombre']
-        self.page.clean()
-        self.page.add(SopaDeLetrasScreen(self.page, id_sopa=id_sopa, nombre_area=nombre_area))
+    def _on_card_click(self, card_data):
+        try:
+            id_sopa = card_data['id']
+            nombre_area = card_data['nombre']
+
+            print(f"--- DEBUG (SeleccionarSopa): Navegando a SopaDeLetrasScreen con id_sopa='{id_sopa}' ---")
+
+            # Mostrar loading mientras se carga
+            self.content_area.content = ft.Column(
+                [
+                    ft.ProgressRing(),
+                    ft.Text("Cargando sopa de letras...", size=16),
+                    ft.Text(f"Sopa: {id_sopa}", size=14, color=ft.Colors.GREY_600)
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                alignment=ft.MainAxisAlignment.CENTER,
+                expand=True
+            )
+            self.update()
+
+            # Navegar a la pantalla de sopa de letras
+            self.page.clean()
+            nueva_pantalla = SopaDeLetrasScreen(
+                page=self.page,
+                id_sopa=id_sopa,
+                nombre_area=nombre_area
+            )
+            self.page.add(nueva_pantalla)
+            print("--- DEBUG (SeleccionarSopa): Navegación completada ---")
+
+        except Exception as ex:
+            print(f"--- DEBUG (SeleccionarSopa): ERROR en _on_card_click: {ex} ---")
+            import traceback
+            traceback.print_exc()
+
+            # Mostrar error al usuario
+            self.page.show_snack_bar(
+                ft.SnackBar(
+                    content=ft.Text(f"Error al cargar la sopa de letras: {str(ex)}"),
+                    action="OK"
+                )
+            )
