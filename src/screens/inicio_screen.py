@@ -63,7 +63,7 @@ class InicioScreen(ft.Column):
         # Columna de la vista de video
         self.video_view_column = ft.Column(
             [
-                self.video_player,  # <-- Aquí se pone el placeholder inicial
+                self.video_player,
                 ft.Container(height=10),
                 ft.Row([ft.Text(""), self.comments_button], alignment=ft.MainAxisAlignment.END),
                 ft.Container(height=10),
@@ -208,12 +208,12 @@ class InicioScreen(ft.Column):
         self.video_player = new_video_player
         self.video_view_column.controls[0] = self.video_player  # Reemplaza el placeholder
 
-        # 4. Actualizamos el resto de la UI
+
         self.video_title.value = video_data.get('Nombre', 'Sin Título')
         self.video_description.value = video_data.get('Descripción', 'Sin Descripción')
         self.comments_button.on_click = lambda _, video_id=video_id: self._show_comments(video_id)
 
-        # 5. RENDERIZAMOS todo de una vez
+
         self.page.update()
         print("--- DEBUG: main_content actualizado.")
 
@@ -243,7 +243,7 @@ class InicioScreen(ft.Column):
                     border_radius=ft.border_radius.vertical(top=20),
                     height=self.page.height * 0.85  # Usar page.height en lugar de window_height
                 ),
-                open=True,  # IMPORTANTE: Abrir directamente aquí
+                open=True,
                 on_dismiss=lambda _: print("--- DEBUG: BottomSheet cerrado ---")
             )
 
