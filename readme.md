@@ -22,5 +22,5 @@ Nuestra plataforma ofrece un ecosistema completo de aprendizaje que combina cont
 - Arquitectura 100% Python gracias a Flet
 - Código más mantenible y escalable
 - Rendimiento optimizado para web y escritorio
-- Base de código unificada sin dependencias de Flutter
+- Base de código unificada sin dependencias de Flutter.
 
