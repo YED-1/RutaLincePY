@@ -196,7 +196,7 @@ class PreguntasScreen(ft.Column):
                     )
                 )
 
-                # Opciones de respuesta
+                # Opciones de respuesta - CORRECCIÓN AQUÍ, ft radio solo espera un string simple y no un objeto ft.text 05/12/2025
                 opciones_radio = ft.RadioGroup(
                     content=ft.Column([
                         ft.Container(
@@ -205,8 +205,8 @@ class PreguntasScreen(ft.Column):
                             border=ft.border.all(1, ft.Colors.GREY_200),
                             border_radius=6,
                             content=ft.Radio(
-                                value=opt,
-                                label=ft.Text(opt, size=14),
+                                value=opt,  # Solo el texto como valor
+                                label=opt,  # Solo el texto como label, NO ft.Text(opt)
                                 fill_color=ft.Colors.BLUE_900
                             )
                         ) for opt in p['opciones_mezcladas']
