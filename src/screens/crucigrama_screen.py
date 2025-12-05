@@ -110,8 +110,8 @@ class CrucigramaScreen(ft.Column):
             on_click=on_click if on_click else lambda e, k=key: self._on_key_tap(k),
             style=ft.ButtonStyle(
                 shape=ft.RoundedRectangleBorder(radius=5),
-                bgcolor=ft.colors.GREY_600,
-                color=ft.colors.WHITE
+                bgcolor=ft.Colors.GREY_600,
+                color=ft.Colors.WHITE
             )
         )
 
@@ -139,8 +139,8 @@ class CrucigramaScreen(ft.Column):
         # Pass 1: Greens
         for i in range(len(self.target_word)):
             if attempt[i] == self.target_word[i]:
-                temp_grid_colors[i] = ft.colors.GREEN_400
-                self.key_buttons[attempt[i]].bgcolor = ft.colors.GREEN_400
+                temp_grid_colors[i] = ft.Colors.GREEN_400
+                self.key_buttons[attempt[i]].bgcolor = ft.Colors.GREEN_400
                 target_chars[i] = None  # Mark as used
 
         # Pass 2: Yellows and Grays

@@ -12,7 +12,8 @@ venv.bak
 pyproject.toml
 .gitignore
 ruta_lince.db
-
+.pylintrc
+reporte_calidad.txt
 # =======================================================
 # Archivos generados por Python
 # =======================================================

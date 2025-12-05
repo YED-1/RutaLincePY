@@ -5,6 +5,7 @@ import math
 
 
 # Clase auxiliar para coordenadas
+#
 class Coord:
     def __init__(self, row, col):
         self.row = row
@@ -16,7 +17,7 @@ class Coord:
     def __hash__(self):
         return hash((self.row, self.col))
 
-
+#Clase que crea la sopa de letras
 class SopaDeLetrasScreen(ft.Column):
     def __init__(self, page: ft.Page, id_sopa: str, nombre_area: str):
         super().__init__(expand=True, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
