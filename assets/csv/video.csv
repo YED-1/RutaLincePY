@@ -1,10 +1,17 @@
-ID_Video,Nombre,Descripción,URL_Video,Duración,Visualizaciones,Cantidad_Likes,Cantidad_Dislikes,Estado,ID_Area
-VID1,Actuadores,Se presentarán los conceptos básicos sobre actuadores como sus tipos ó funcionamiento y sus aplicaciones en sistemas automatizados,Video1,10,10,4,1,Activo,AR2C2
-VID3,Instrumentación,Se presentarán los conceptos básicos de la instrumentación en sistemas mecatrónicos,Video3,10,10,4,1,Activo,AR2C2
-VID4,Programación de Sistemas Eléctricos,Se presentarán los conceptos básicos de la programación de sistemas electrónicos,Video4,10,10,4,1,Activo,AR2C2
-VID5,Sensores,Se presentarán los conceptos básicos de los sensores,Video5,10,10,4,1,Activo,AR2C2
-VID6,Tecnologías CAD o CAM y CAE,Se presentarán los conceptos básicos de la programación CNC,Video6,10,10,4,1,Activo,AR2C2
-VID7,Ciclo While,Se presentarán las condicionales en Python desde su sintaxis hasta ejercicios de errores lógicos y sintaxis,Video7,10,10,4,1,Activo,AR2C2
-VID8,Algoritmos,Se presentarán los conceptos fundamentales de los algoritmos incluyendo su definición y estructura,Video8,10,10,4,1,Activo,AR2C2
-VID9,Ciclo For,Se presentarán las condicionales en Python desde su sintaxis hasta ejercicios de errores lógicos y sintaxis,Video9,10,10,4,1,Activo,AR2C2
-VID10,Condicionales,Se presentarán las condicionales en Python desde su sintaxis hasta ejercicios de errores lógicos y sintaxis,Video10,10,10,4,1,Activo,AR2C2
+ID_Video,Nombre,DescripciÃ³n,URL_Video,DuraciÃ³n,Visualizaciones,Cantidad_Likes,Cantidad_Dislikes,Estado,ID_Area
+VID1,Actuadores,Se presentarÃ¡n los conceptos bÃ¡sicos sobre actuadores como sus tipos Ã³ funcionamiento y sus aplicaciones en sistemas automatizados,Video1,10,10,4,1,Activo,AR2C2
+VID3,InstrumentaciÃ³n,Se presentarÃ¡n los conceptos bÃ¡sicos de la instrumentaciÃ³n en sistemas mecatrÃ³nicos,Video3,10,10,4,1,Activo,AR2C2
+VID4,ProgramaciÃ³n de Sistemas ElÃ©ctricos,Se presentarÃ¡n los conceptos bÃ¡sicos de la programaciÃ³n de sistemas electrÃ³nicos,Video4,10,10,4,1,Activo,AR2C2
+VID5,Sensores,Se presentarÃ¡n los conceptos bÃ¡sicos de los sensores,Video5,10,10,4,1,Activo,AR2C2
+VID6,TecnologÃ­as CAD o CAM y CAE,Se presentarÃ¡n los conceptos bÃ¡sicos de la programaciÃ³n CNC,Video6,10,10,4,1,Activo,AR2C2
+VID7,Ciclo While,Se presentarÃ¡n las condicionales en Python desde su sintaxis hasta ejercicios de errores lÃ³gicos y sintaxis,Video7,10,10,4,1,Activo,AR2C2
+VID8,Algoritmos,Se presentarÃ¡n los conceptos fundamentales de los algoritmos incluyendo su definiciÃ³n y estructura,Video8,10,10,4,1,Activo,AR2C2
+VID9,Ciclo For,Se presentarÃ¡n las condicionales en Python desde su sintaxis hasta ejercicios de errores lÃ³gicos y sintaxis,Video9,10,10,4,1,Activo,AR2C2
+VID10,Condicionales,Se presentarÃ¡n las condicionales en Python desde su sintaxis hasta ejercicios de errores lÃ³gicos y sintaxis,Video10,10,10,4,1,Activo,AR2C2
+VID11,Sistemas mecanicos,"Se presentarán los conceptos básicos de los sistemas mecánicos, incluyendo mecanismos de transmisión y transformación de movimiento",Video11,10,10,4,1,Activo,AR1C2
+VID12,"Sistemas Electronicos Analogicos, Digitales y de Potencia","Se presentarán los conceptos básicos de la electrónica analógica, digital y de potencia, así como el análisis de circuitos y semiconductores",Video12,10,10,4,1,Activo,AR1C2
+VID13,Sistemas de automatización y control analogico y digital,Se presentarán los conceptos básicos de la teoría de control y la implementación de sistemas de automatización usando tecnologías analógicas y digitales,Video13,10,10,4,1,Activo,AR1C2
+VID14,Modelado y simulación de sistemas mecatronicos,Se presentarán los conceptos básicos para el modelado matemático y la simulación por computadora de sistemas dinámicos mecatrónicos,Video14,10,10,4,1,Activo,AR1C2
+VID15,Planeación y evaluación de proyectos mecatronicos,"Se presentarán los conceptos básicos para la formulación, gestión y evaluación de la viabilidad técnica y económica de proyectos",Video15,10,10,4,1,Activo,AR3C2
+VID16,Redes Industriales,Se presentarán los conceptos básicos de las redes de comunicación de datos en entornos industriales y sus principales protocolos,Video16,10,10,4,1,Activo,AR3C2
+VID17,Automatizacion y control industrial,Se presentarán los conceptos básicos de la automatización de procesos de manufactura y el control de maquinaria industrial,Video17,10,10,4,1,Activo,AR3C2

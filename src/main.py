@@ -10,6 +10,8 @@ def main(page: ft.Page):
     page.theme_mode = ft.ThemeMode.LIGHT
     page.window_width = 400
     page.window_height = 800
+    #page.client_storage.clear() #Borra la memoria y genera un nuevo cliente; comentar cuando se inicie un nuevo cliente; Solo usar para probar la app desde 0
+
 
     # --- LÓGICA DE ARRANQUE TRADUCIDA ---
     saved_campus_id = page.client_storage.get("idCampus")

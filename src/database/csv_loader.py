@@ -30,7 +30,7 @@ def populate_from_csv_if_empty(db_helper, conn):  # Recibe la conexión
     for file_name, insert_method in csv_map.items():
         file_path = os.path.join(csv_dir, file_name)
         try:
-            with open(file_path, 'r', encoding='utf-8-sig') as f:
+            with open(file_path, 'r', encoding='utf-8') as f:
                 reader = csv.reader(f)
                 next(reader)
                 for row in reader:

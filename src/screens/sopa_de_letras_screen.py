@@ -4,8 +4,6 @@ from src.database.database import DatabaseHelper
 import math
 
 
-# Clase auxiliar para coordenadas
-#
 class Coord:
     def __init__(self, row, col):
         self.row = row
@@ -17,37 +15,57 @@ class Coord:
     def __hash__(self):
         return hash((self.row, self.col))
 
-#Clase que crea la sopa de letras
+    def __repr__(self):
+        return f"({self.row}, {self.col})"
+
+
 class SopaDeLetrasScreen(ft.Column):
     def __init__(self, page: ft.Page, id_sopa: str, nombre_area: str):
-        super().__init__(expand=True, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
+        # 1. ACTIVAR SCROLL: Es vital para ver el contenido que se desborda
+        super().__init__(
+            expand=True,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            scroll=ft.ScrollMode.AUTO
+        )
         self.page = page
         self.id_sopa = id_sopa
         self.nombre_area = nombre_area
         self.db_helper = DatabaseHelper()
 
+        # Variables de estado
         self.words = []
-        self.puzzle_obj = None
         self.grid_data = []
         self.grid_size = 12
-        self.cell_size = 35
+        self.cell_size = 30  # Se recalcula en did_mount
         self.start_coord = None
         self.current_coord = None
         self.current_path = set()
         self.found_words = set()
         self.found_cells = set()
 
+        # Controles UI
         self.grid_view = ft.GridView(
             runs_count=self.grid_size,
-            spacing=0,
-            run_spacing=0,
-            width=self.cell_size * self.grid_size,
-            height=self.cell_size * self.grid_size,
+            spacing=2,
+            run_spacing=2,
+            padding=0,
         )
-        self.words_row = ft.Row(wrap=True, alignment=ft.MainAxisAlignment.CENTER)
+
+        self.words_row = ft.Row(wrap=True, alignment=ft.MainAxisAlignment.CENTER, spacing=5)
+
+        self.header = ft.Row(
+            [
+                ft.IconButton(ft.Icons.ARROW_BACK, on_click=lambda _: self._go_back()),
+                ft.Text(self.nombre_area.upper(), size=16, weight=ft.FontWeight.BOLD, expand=True,
+                        text_align=ft.TextAlign.CENTER),
+                ft.Container(width=40)
+            ],
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN
+        )
 
         self.controls = [
-            ft.Text(self.nombre_area.upper(), size=18, weight=ft.FontWeight.BOLD),
+            ft.Container(padding=10, content=self.header),
+            # Contenedor del Tablero con GestureDetector
             ft.Container(
                 content=ft.GestureDetector(
                     on_pan_start=self._on_pan_start,
@@ -55,260 +73,277 @@ class SopaDeLetrasScreen(ft.Column):
                     on_pan_end=self._on_pan_end,
                     content=self.grid_view,
                 ),
-                alignment=ft.alignment.center
+                alignment=ft.alignment.center,
+                border_radius=10,
+                padding=10,
+                bgcolor=ft.Colors.BLUE_50,
             ),
             ft.Container(height=20),
-            ft.Text("Palabras", size=16, weight=ft.FontWeight.BOLD),
+            ft.Text("Palabras a encontrar:", size=16, weight=ft.FontWeight.BOLD),
+            # Contenedor de las palabras a buscar
             ft.Container(
                 content=self.words_row,
-                padding=8,
-                bgcolor=ft.Colors.GREY_300,
-                border_radius=8
-            )
+                padding=10,
+                border_radius=10,
+                bgcolor=ft.Colors.WHITE,
+                border=ft.border.all(1, ft.Colors.GREY_300)
+            ),
+            # Espacio extra al final para asegurar que el scroll llegue hasta abajo
+            ft.Container(height=50)
         ]
 
     def did_mount(self):
-        self.page.appbar = ft.AppBar(title=ft.Text("Sopa de Letras"))
+        # 2. RESPONSIVO: Calculamos el tamaño de celda según el ancho de pantalla
+        screen_width = self.page.window_width if self.page.window_width else 400
+        # Restamos margenes (aprox 60px) y dividimos por columnas
+        self.cell_size = (screen_width - 60) / self.grid_size
+
+        # Fijamos dimensiones al GridView para que funcione dentro del scroll
+        total_size = (self.cell_size * self.grid_size) + (self.grid_size * 2)
+        self.grid_view.width = total_size
+        self.grid_view.height = total_size
+
         self._init_sopa()
         self.page.update()
 
     def _init_sopa(self):
         try:
             self.words = self.db_helper.get_palabras_por_sopa(self.id_sopa)
-            print(f"--- DEBUG (Sopa): Palabras encontradas: {self.words} ---")
 
             if not self.words:
-                self.controls.clear()
-                self.controls.append(
-                    ft.Column([
-                        ft.Icon(ft.Icons.ERROR_OUTLINE, size=48, color=ft.Colors.RED),
-                        ft.Text("No se encontraron palabras para este juego.", text_align=ft.TextAlign.CENTER)
-                    ], horizontal_alignment=ft.CrossAxisAlignment.CENTER)
-                )
-                self.update()
-                return
+                self.words = ["PRUEBA", "SOPA", "FLET", "LINCE"]
 
-            # Crear el puzzle de sopa de letras
-            self.puzzle_obj = WordSearch(",".join(self.words), size=self.grid_size)
-            self.grid_data = [list(row) for row in str(self.puzzle_obj).split('\n') if row.strip()]
+            # Generar sopa con la librería
+            clean_words = [w.strip().upper() for w in self.words if w.strip()]
+            puzzle = WordSearch(",".join(clean_words), size=self.grid_size)
 
-            # se Asegura de que el grid tenga el tamaño correcto
-            if len(self.grid_data) < self.grid_size:
-                for _ in range(self.grid_size - len(self.grid_data)):
-                    self.grid_data.append([' '] * self.grid_size)
+            # Convertir string a matriz
+            puzzle_str = str(puzzle).replace(' ', '')
+            lines = puzzle_str.split('\n')
 
-            print(
-                f"--- DEBUG (Sopa): Grid creado, tamaño: {len(self.grid_data)}x{len(self.grid_data[0]) if self.grid_data else 0} ---")
+            self.grid_data = []
+            for line in lines:
+                if line.strip():
+                    row_chars = list(line.strip().replace(' ', ''))
+                    # Rellenar si falta longitud
+                    if len(row_chars) < self.grid_size:
+                        row_chars.extend(['X'] * (self.grid_size - len(row_chars)))
+                    self.grid_data.append(row_chars[:self.grid_size])
 
-            self.grid_view.controls.clear()
-            for r in range(self.grid_size):
-                for c in range(self.grid_size):
-                    if r < len(self.grid_data) and c < len(self.grid_data[r]):
-                        letter = self.grid_data[r][c].upper()
-                    else:
-                        letter = ' '  # Rellenar con espacios si es necesario
+            # Rellenar filas si faltan
+            while len(self.grid_data) < self.grid_size:
+                self.grid_data.append(['X'] * self.grid_size)
 
-                    self.grid_view.controls.append(
-                        ft.Container(
-                            width=self.cell_size,
-                            height=self.cell_size,
-                            alignment=ft.alignment.center,
-                            border=ft.border.all(1, ft.Colors.BLACK12),
-                            content=ft.Text(letter, size=18, weight=ft.FontWeight.BOLD),
-                        )
-                    )
-
-            self.words_row.controls.clear()
-            for word in self.words:
-                self.words_row.controls.append(
-                    ft.Chip(
-                        label=ft.Text(word.upper()),  # Usar 'label' en lugar de 'content' esto causa errores
-                        bgcolor=ft.Colors.WHITE,
-                        check_color=ft.Colors.WHITE,
-                        selected_color=ft.Colors.BLUE_900,
-                    )
-                )
+            self._draw_grid()
+            self._draw_word_chips()
             self.update()
 
         except Exception as e:
-            print(f"--- DEBUG (Sopa): ERROR en _init_sopa: {e} ---")
-            import traceback
-            traceback.print_exc()
-            self.controls.clear()
-            self.controls.append(
-                ft.Column([
-                    ft.Icon(ft.Icons.ERROR_OUTLINE, size=48, color=ft.Colors.RED),
-                    ft.Text(f"Error al cargar la sopa de letras: {str(e)}", text_align=ft.TextAlign.CENTER)
-                ], horizontal_alignment=ft.CrossAxisAlignment.CENTER)
+            print(f"Error sopa: {e}")
+
+    def _draw_grid(self):
+        self.grid_view.controls.clear()
+        for r in range(self.grid_size):
+            for c in range(self.grid_size):
+                letter = self.grid_data[r][c]
+                cell = ft.Container(
+                    content=ft.Text(letter, size=self.cell_size * 0.5, weight=ft.FontWeight.BOLD),
+                    width=self.cell_size,
+                    height=self.cell_size,
+                    alignment=ft.alignment.center,
+                    bgcolor=ft.Colors.WHITE,
+                    border_radius=4,
+                    border=ft.border.all(1, ft.Colors.BLUE_100),
+                    data=Coord(r, c)
+                )
+                self.grid_view.controls.append(cell)
+
+    def _draw_word_chips(self):
+        self.words_row.controls.clear()
+        for word in self.words:
+            is_found = word.upper() in self.found_words
+            self.words_row.controls.append(
+                ft.Container(
+                    content=ft.Text(
+                        word.upper(),
+                        color=ft.Colors.WHITE if is_found else ft.Colors.BLACK,
+                        weight=ft.FontWeight.BOLD
+                    ),
+                    padding=ft.padding.symmetric(horizontal=10, vertical=5),
+                    bgcolor=ft.Colors.GREEN if is_found else ft.Colors.GREY_200,
+                    border_radius=20,
+                    opacity=0.5 if is_found else 1.0
+                )
             )
-            self.update()
+
+    # --- LÓGICA TÁCTIL ---
 
     def _coord_from_position(self, x, y):
-        try:
-            col = math.floor(x / self.cell_size)
-            row = math.floor(y / self.cell_size)
-            if 0 <= row < self.grid_size and 0 <= col < self.grid_size:
-                return Coord(row, col)
-            return None
-        except Exception as e:
-            print(f"--- DEBUG (Sopa): ERROR en _coord_from_position: {e} ---")
-            return None
+        # Convertir píxeles a coordenadas de matriz
+        effective_size = self.cell_size + 2
+        col = int(x // effective_size)
+        row = int(y // effective_size)
+        if 0 <= row < self.grid_size and 0 <= col < self.grid_size:
+            return Coord(row, col)
+        return None
 
-    def _update_path(self):
-        try:
-            path = set()
-            if self.start_coord and self.current_coord:
-                dr = self.current_coord.row - self.start_coord.row
-                dc = self.current_coord.col - self.start_coord.col
-                steps = max(abs(dr), abs(dc))
+    def _on_pan_start(self, e: ft.DragStartEvent):
+        self.start_coord = self._coord_from_position(e.local_x, e.local_y)
+        self.current_coord = self.start_coord
+        self._calculate_tolerant_path()
 
-                # Solo permitir líneas rectas (horizontal, vertical, diagonal)
-                is_straight_line = abs(dr) == abs(dc) or dr == 0 or dc == 0
-                if not is_straight_line:
-                    return
+    def _on_pan_update(self, e: ft.DragUpdateEvent):
+        new_coord = self._coord_from_position(e.local_x, e.local_y)
+        if new_coord and new_coord != self.current_coord:
+            self.current_coord = new_coord
+            self._calculate_tolerant_path()
 
-                if steps == 0:
-                    path.add(self.start_coord)
-                else:
-                    step_row = dr / steps
-                    step_col = dc / steps
-                    for i in range(steps + 1):
-                        row = round(self.start_coord.row + step_row * i)
-                        col = round(self.start_coord.col + step_col * i)
-                        path.add(Coord(row, col))
+    def _on_pan_end(self, e: ft.DragEndEvent):
+        self._check_word()
 
-            self.current_path = path
-            self._update_grid_colors()
+    def _calculate_tolerant_path(self):
+        """
+        3. SELECCIÓN INTELIGENTE: Detecta si quieres ir horizontal, vertical
+        o diagonal y 'imanta' la selección a esa línea.
+        """
+        if not self.start_coord or not self.current_coord:
+            return
 
-        except Exception as e:
-            print(f"--- DEBUG (Sopa): ERROR en _update_path: {e} ---")
+        r1, c1 = self.start_coord.row, self.start_coord.col
+        r2, c2 = self.current_coord.row, self.current_coord.col
 
-    def _check_path(self):
-        try:
-            if not self.current_path or len(self.current_path) < 2:
-                self.current_path = set()
-                self._update_grid_colors()
-                return
+        dr = r2 - r1
+        dc = c2 - c1
 
-            # Ordenar las coordenadas del path
-            path_list = sorted(list(self.current_path),
-                               key=lambda c: (c.row, c.col))
+        if dr == 0 and dc == 0:
+            self.current_path = {self.start_coord}
+            self._refresh_grid_colors()
+            return
 
-            # Obtener el texto del path
-            text = "".join([self.grid_data[c.row][c.col] for c in path_list])
-            rev_text = text[::-1]
+        # Calcular ángulo para determinar dirección
+        angle = math.degrees(math.atan2(dr, dc)) % 360
 
-            found_word = None
-            if text.lower() in self.words:
-                found_word = text.lower()
-            elif rev_text.lower() in self.words:
-                found_word = rev_text.lower()
+        direction = None  # 'H', 'V', 'D1', 'D2'
 
-            if found_word and found_word not in self.found_words:
-                self.found_words.add(found_word)
-                self.found_cells.update(self.current_path)
-                print(f"--- DEBUG (Sopa): Palabra encontrada: {found_word} ---")
+        # Tolerancia angular para facilitar la selección
+        if (337.5 <= angle or angle < 22.5) or (157.5 <= angle < 202.5):
+            direction = 'H'
+        elif (67.5 <= angle < 112.5) or (247.5 <= angle < 292.5):
+            direction = 'V'
+        elif (22.5 <= angle < 67.5) or (202.5 <= angle < 247.5):
+            direction = 'D1'  # \
+        elif (112.5 <= angle < 157.5) or (292.5 <= angle < 337.5):
+            direction = 'D2'  # /
 
-            self.start_coord = None
-            self.current_coord = None
-            self.current_path = set()
-            self._update_grid_colors()
-            self._update_words_chips()
+        # Ajustar punto final (Snapping)
+        final_r, final_c = r2, c2
 
-            if len(self.found_words) == len(self.words):
-                self._show_congrats_dialog()
+        if direction == 'H':
+            final_r = r1
+        elif direction == 'V':
+            final_c = c1
+        elif direction == 'D1':  # Diagonal perfecta
+            dist = max(abs(dr), abs(dc))
+            final_r = r1 + (dist * (1 if dr > 0 else -1))
+            final_c = c1 + (dist * (1 if dc > 0 else -1))
+        elif direction == 'D2':
+            dist = max(abs(dr), abs(dc))
+            final_r = r1 + (dist * (1 if dr > 0 else -1))
+            final_c = c1 + (dist * (1 if dc > 0 else -1))
 
-        except Exception as e:
-            print(f"--- DEBUG (Sopa): ERROR en _check_path: {e} ---")
+        # Límites
+        final_r = max(0, min(self.grid_size - 1, final_r))
+        final_c = max(0, min(self.grid_size - 1, final_c))
 
-    def _update_grid_colors(self):
-        try:
-            for i, cell_container in enumerate(self.grid_view.controls):
-                row, col = divmod(i, self.grid_size)
-                coord = Coord(row, col)
+        # Generar camino
+        self.current_path.clear()
+        dr_final = final_r - r1
+        dc_final = final_c - c1
+        steps = max(abs(dr_final), abs(dc_final))
 
+        for i in range(steps + 1):
+            r = r1 + round(i * dr_final / steps) if steps else r1
+            c = c1 + round(i * dc_final / steps) if steps else c1
+            self.current_path.add(Coord(r, c))
 
-                if coord in self.found_cells:
-                    cell_container.bgcolor = ft.Colors.GREEN_200  # Verde claro para palabras encontradas
-                elif coord in self.current_path:
-                    cell_container.bgcolor = ft.Colors.BLUE_200  # Azul claro para selección actual
-                else:
-                    cell_container.bgcolor = ft.Colors.WHITE  # Blanco por defecto
+        self._refresh_grid_colors()
 
-                # Asegurar que el texto sea visible
-                if hasattr(cell_container.content, 'color'):
-                    if coord in self.found_cells or coord in self.current_path:
-                        cell_container.content.color = ft.Colors.BLACK  # Texto negro sobre fondo claro
-                    else:
-                        cell_container.content.color = ft.Colors.BLACK  # Texto negro por defecto
+    def _refresh_grid_colors(self):
+        # Actualiza colores: Verde (ya encontrado), Azul (seleccionando), Blanco (normal)
+        for i, cell in enumerate(self.grid_view.controls):
+            coord = cell.data
+            if coord in self.found_cells:
+                cell.bgcolor = ft.Colors.GREEN_300
+                cell.content.color = ft.Colors.WHITE
+            elif coord in self.current_path:
+                cell.bgcolor = ft.Colors.BLUE_300
+                cell.content.color = ft.Colors.WHITE
+            else:
+                cell.bgcolor = ft.Colors.WHITE
+                cell.content.color = ft.Colors.BLACK
+        self.grid_view.update()
 
-            self.grid_view.update()
+    def _check_word(self):
+        if not self.current_path: return
 
-        except Exception as e:
-            print(f"--- DEBUG (Sopa): ERROR en _update_grid_colors: {e} ---")
+        # Reconstruir palabra desde el path ordenado
+        path_list = list(self.current_path)
+        if not path_list: return
 
-    def _update_words_chips(self):
-        try:
-            for chip in self.words_row.controls:
-                # CORREGIDO: Acceder al texto correctamente
-                word = chip.label.value.lower()
-                if word in self.found_words:
-                    chip.bgcolor = ft.Colors.GREEN_500  # Verde para palabras encontradas
-                    chip.label.color = ft.Colors.WHITE  # Texto blanco
-                else:
-                    chip.bgcolor = ft.Colors.WHITE  # Blanco para palabras no encontradas
-                    chip.label.color = ft.Colors.BLACK  # Texto negro
+        # Encontrar extremos para ordenar correctamente
+        r1, c1 = self.start_coord.row, self.start_coord.col
+        end_coord = max(path_list, key=lambda c: max(abs(c.row - r1), abs(c.col - c1)))
 
-            self.words_row.update()
+        # Reconstruir línea ordenada
+        line_coords = []
+        dr = end_coord.row - r1
+        dc = end_coord.col - c1
+        steps = max(abs(dr), abs(dc))
 
-        except Exception as e:
-            print(f"--- DEBUG (Sopa): ERROR en _update_words_chips: {e} ---")
+        for i in range(steps + 1):
+            r = r1 + round(i * dr / steps) if steps else r1
+            c = c1 + round(i * dc / steps) if steps else c1
+            line_coords.append(Coord(r, c))
 
-    def _show_congrats_dialog(self):
-        def close_dialog(e):
+        word_str = "".join([self.grid_data[c.row][c.col] for c in line_coords])
+
+        # Verificar palabra (normal o invertida)
+        if word_str in self.words and word_str not in self.found_words:
+            self._word_found(word_str, line_coords)
+        elif word_str[::-1] in self.words and word_str[::-1] not in self.found_words:
+            self._word_found(word_str[::-1], line_coords)
+        else:
+            self.current_path.clear()
+            self._refresh_grid_colors()
+
+    def _word_found(self, word, path):
+        self.found_words.add(word)
+        self.found_cells.update(path)
+        self.current_path.clear()
+        self._refresh_grid_colors()
+        self._draw_word_chips()
+        self.words_row.update()
+
+        if len(self.found_words) == len(self.words):
+            self._show_win_dialog()
+
+    def _show_win_dialog(self):
+        def close_dlg(e):
             self.page.dialog.open = False
             self.page.update()
-            # Navegar de vuelta
-            from src.screens.seleccionar_sopa_screen import SeleccionarSopaScreen
-            self.page.clean()
-            id_carrera = self.page.client_storage.get("idCarrera")
-            if id_carrera:
-                self.page.add(SeleccionarSopaScreen(self.page, id_carrera=id_carrera))
+            self._go_back()
 
         self.page.dialog = ft.AlertDialog(
-            modal=True,
-            title=ft.Row([
-                ft.Icon(ft.Icons.CHECK_CIRCLE, color=ft.Colors.GREEN),
-                ft.Text("¡Felicidades!")
-            ]),
-            content=ft.Text("¡Has encontrado todas las palabras!"),
-            actions=[
-                ft.TextButton("OK", on_click=close_dialog)
-            ],
-            actions_alignment=ft.MainAxisAlignment.END,
+            title=ft.Text("¡Felicidades!"),
+            content=ft.Text("Has completado la sopa de letras."),
+            actions=[ft.TextButton("Salir", on_click=close_dlg)],
         )
         self.page.dialog.open = True
         self.page.update()
 
-    def _on_pan_start(self, e: ft.DragStartEvent):
-        try:
-            self.start_coord = self._coord_from_position(e.local_x, e.local_y)
-            self.current_coord = self.start_coord
-            self._update_path()
-        except Exception as ex:
-            print(f"--- DEBUG (Sopa): ERROR en _on_pan_start: {ex} ---")
-
-    def _on_pan_update(self, e: ft.DragUpdateEvent):
-        try:
-            coord = self._coord_from_position(e.local_x, e.local_y)
-            if coord:
-                self.current_coord = coord
-                self._update_path()
-        except Exception as ex:
-            print(f"--- DEBUG (Sopa): ERROR en _on_pan_update: {ex} ---")
-
-    def _on_pan_end(self, e: ft.DragEndEvent):
-        try:
-            self._check_path()
-        except Exception as ex:
-            print(f"--- DEBUG (Sopa): ERROR en _on_pan_end: {ex} ---")
+    def _go_back(self):
+        from src.screens.seleccionar_sopa_screen import SeleccionarSopaScreen
+        self.page.controls.clear()
+        id_carrera = self.page.client_storage.get("idCarrera")
+        self.page.add(SeleccionarSopaScreen(self.page, id_carrera=id_carrera))
+        self.page.update()

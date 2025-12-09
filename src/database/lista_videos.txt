@@ -1,4 +1,13 @@
 VIDEOS
+Area 1. Diseño de sistemas mecatronicos
+
+TFE_Sistemas mecanicos.mp4--------------------------------Video11
+TFE_Sistemas electronicos analogicos, digitales y de potencia.....Video12
+TFE_Sistemas de automatización y control analogico y digital.......Video13
+TFE_Modelado y simulación de sistemas mecatronicos................Video14
+
+-----------------------------------------------------------------
+Area 2. Implementación de sistemas mecatrónicos
 
 TFE_Actuadores.mp4------------------------------------------Video1
 TFE_Cadena de suministros.mp4-------------------------------Video2  //No va este
@@ -12,6 +21,12 @@ Ciclo For Python.mp4----------------------------------------Video9
 Condicionales Python.mp4------------------------------------Video10
 
 --------------------------------------------------------------------
+Area 3. Integración de tecnologías para sistemas mecatronicos
+
+TFE_Planeación y evaluación de proyectos mecatronicos.mp4...Video15
+TFE_Redes Industriales.mp4...................................Video16
+TFE_Automatizacion y control industrial.mp4..................Video17
+
 
 CSVS
 

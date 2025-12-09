@@ -13,7 +13,8 @@ pyproject.toml
 .gitignore
 ruta_lince.db
 .pylintrc
-reporte_calidad.txt
+.txt
+
 # =======================================================
 # Archivos generados por Python
 # =======================================================

@@ -1,6 +1,6 @@
 import flet as ft
 from src.screens.seleccionar_sopa_screen import SeleccionarSopaScreen
-from src.screens.seleccionar_crucigrama_screen import SeleccionarCrucigramaScreen
+#from src.screens.seleccionar_crucigrama_screen import SeleccionarCrucigramaScreen
 # Pendiente por ahora
 class JuegosScreen(ft.Column):
     def __init__(self, page: ft.Page, id_carrera: str, id_campus: str, id_usuario: str):
@@ -23,12 +23,12 @@ class JuegosScreen(ft.Column):
                 width=250,
                 height=60
             ),
-            ft.ElevatedButton(
-                content=ft.Row([ft.Icon(ft.Icons.FORMAT_SHAPES), ft.Text("Palabreta")]),
-                on_click=self.go_to_palabreta,
-                width=250,
-                height=60
-            ),
+            #ft.ElevatedButton(
+                #content=ft.Row([ft.Icon(ft.Icons.FORMAT_SHAPES), ft.Text("Palabreta")]),
+                #on_click=self.go_to_palabreta,
+                #width=250,
+                #height=60
+            #),
         ]
 
     def did_mount(self):
@@ -47,6 +47,6 @@ class JuegosScreen(ft.Column):
         self.page.clean()
         self.page.add(SeleccionarSopaScreen(self.page, id_carrera=self.id_carrera))
 
-    def go_to_palabreta(self, e):
-        self.page.clean()
-        self.page.add(SeleccionarCrucigramaScreen(self.page, id_carrera=self.id_carrera))
+    #def go_to_palabreta(self, e):
+        #self.page.clean()
+        #self.page.add(SeleccionarCrucigramaScreen(self.page, id_carrera=self.id_carrera))
