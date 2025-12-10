@@ -31,10 +31,20 @@ class CreditosScreen(ft.Column):
                     controls=[
                         # Introducción
                         ft.Text(
-                            'Este proyecto se realiza dentro del programa de Servicio Social de la Dirección Nacional de Programas de Ingenierías',
+                            'Este proyecto se realiza dentro del programa de Servicio Social / Practicas Profesionales de Dirección Nacional de Programas de Ingenierías',
                             size=16,
                             text_align=ft.TextAlign.JUSTIFY,
                         ),
+                        ft.Container(height=20),
+
+                        #Director del Proyecto
+                        ft.Text(
+                            'Director del Proyecto',
+                            size=18,
+                            weight=ft.FontWeight.BOLD,
+                            text_align=ft.TextAlign.CENTER,
+                        ),
+                        create_person_tile(name='Mtro. Sánchez Gutiérrez Salvador'),
                         ft.Container(height=20),
 
                         # Scrum Master
@@ -47,20 +57,28 @@ class CreditosScreen(ft.Column):
                         create_person_tile(name='César Antonio Ríos Olivares'),
                         ft.Container(height=20),
 
-                        # Desarrolladores
+                        # Desarrolladores Móvil
                         ft.Text(
-                            'Desarrolladores:',
+                            'Devs Móvil:',
                             size=20,
                             weight=ft.FontWeight.BOLD,
                             text_align=ft.TextAlign.CENTER,
                         ),
                         create_person_tile(name='Aguilar Cabrera Donovan Yosef'),
                         create_person_tile(name='Ayala Rayón Omar'),
-                        create_person_tile(name='Baeza Bernardes Aiker'), # Pendiente
                         create_person_tile(name='Jiménez Alvear Joshua Yedreick'),
                         create_person_tile(name='Luna Ocampo Alejandro'),
-                        create_person_tile(name='Márquez González Adrián Aleksei'), #Pendiente
-                        create_person_tile(name='Quiroz Mora Raúl Alejandro'), #Parte IOS
+                        create_person_tile(name='Quiroz Mora Raúl Alejandro'),
+                        ft.Container(height=20),
+
+                        # Desarrolladores Web
+                        ft.Text(
+                            'Devs Web',
+                            size=18,
+                            weight=ft.FontWeight.BOLD,
+                            text_align=ft.TextAlign.CENTER,
+                        ),
+                        create_person_tile(name='Baltazar Hijanosa Carlos Alberto'),
                         ft.Container(height=20),
 
                         # Tester
@@ -72,6 +90,16 @@ class CreditosScreen(ft.Column):
                         ),
                         create_person_tile(name='Melo Tatenco Cristopher Donovan'),
                         ft.Container(height=30),
+
+
+                        ft.Text(
+                            'Documentación',
+                            size=18,
+                            weight=ft.FontWeight.BOLD,
+                            text_align=ft.TextAlign.CENTER,
+                        ),
+                        create_person_tile(name='Ortiz Sánchez Mauricio Marat'),
+                        ft.Container(height=20),
 
                         ft.Text(
                             'Universidad del Valle de México',
