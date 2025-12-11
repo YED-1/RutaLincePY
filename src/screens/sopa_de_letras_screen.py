@@ -13,6 +13,7 @@ class Coord:
         return isinstance(other, Coord) and self.row == other.row and self.col == other.col
 
     def __hash__(self):
+
         return hash((self.row, self.col))
 
     def __repr__(self):
@@ -21,7 +22,6 @@ class Coord:
 
 class SopaDeLetrasScreen(ft.Column):
     def __init__(self, page: ft.Page, id_sopa: str, nombre_area: str):
-        # 1. ACTIVAR SCROLL: Es vital para ver el contenido que se desborda
         super().__init__(
             expand=True,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -36,7 +36,7 @@ class SopaDeLetrasScreen(ft.Column):
         self.words = []
         self.grid_data = []
         self.grid_size = 12
-        self.cell_size = 30  # Se recalcula en did_mount
+        self.cell_size = 30
         self.start_coord = None
         self.current_coord = None
         self.current_path = set()
@@ -63,9 +63,18 @@ class SopaDeLetrasScreen(ft.Column):
             alignment=ft.MainAxisAlignment.SPACE_BETWEEN
         )
 
+        # Botón de envío
+        self.submit_button = ft.ElevatedButton(
+            text="Enviar y Calificar",
+            icon=ft.Icons.CHECK_CIRCLE_OUTLINE,
+            bgcolor=ft.Colors.BLUE_900,
+            color=ft.Colors.WHITE,
+            on_click=self._on_submit_click,
+            style=ft.ButtonStyle(padding=15)
+        )
+
         self.controls = [
             ft.Container(padding=10, content=self.header),
-            # Contenedor del Tablero con GestureDetector
             ft.Container(
                 content=ft.GestureDetector(
                     on_pan_start=self._on_pan_start,
@@ -80,7 +89,6 @@ class SopaDeLetrasScreen(ft.Column):
             ),
             ft.Container(height=20),
             ft.Text("Palabras a encontrar:", size=16, weight=ft.FontWeight.BOLD),
-            # Contenedor de las palabras a buscar
             ft.Container(
                 content=self.words_row,
                 padding=10,
@@ -88,17 +96,16 @@ class SopaDeLetrasScreen(ft.Column):
                 bgcolor=ft.Colors.WHITE,
                 border=ft.border.all(1, ft.Colors.GREY_300)
             ),
-            # Espacio extra al final para asegurar que el scroll llegue hasta abajo
+            ft.Container(height=20),
+            # Agregamos el botón al final
+            self.submit_button,
             ft.Container(height=50)
         ]
 
     def did_mount(self):
-        # 2. RESPONSIVO: Calculamos el tamaño de celda según el ancho de pantalla
         screen_width = self.page.window_width if self.page.window_width else 400
-        # Restamos margenes (aprox 60px) y dividimos por columnas
         self.cell_size = (screen_width - 60) / self.grid_size
 
-        # Fijamos dimensiones al GridView para que funcione dentro del scroll
         total_size = (self.cell_size * self.grid_size) + (self.grid_size * 2)
         self.grid_view.width = total_size
         self.grid_view.height = total_size
@@ -113,11 +120,9 @@ class SopaDeLetrasScreen(ft.Column):
             if not self.words:
                 self.words = ["PRUEBA", "SOPA", "FLET", "LINCE"]
 
-            # Generar sopa con la librería
             clean_words = [w.strip().upper() for w in self.words if w.strip()]
             puzzle = WordSearch(",".join(clean_words), size=self.grid_size)
 
-            # Convertir string a matriz
             puzzle_str = str(puzzle).replace(' ', '')
             lines = puzzle_str.split('\n')
 
@@ -125,12 +130,10 @@ class SopaDeLetrasScreen(ft.Column):
             for line in lines:
                 if line.strip():
                     row_chars = list(line.strip().replace(' ', ''))
-                    # Rellenar si falta longitud
                     if len(row_chars) < self.grid_size:
                         row_chars.extend(['X'] * (self.grid_size - len(row_chars)))
                     self.grid_data.append(row_chars[:self.grid_size])
 
-            # Rellenar filas si faltan
             while len(self.grid_data) < self.grid_size:
                 self.grid_data.append(['X'] * self.grid_size)
 
@@ -179,7 +182,6 @@ class SopaDeLetrasScreen(ft.Column):
     # --- LÓGICA TÁCTIL ---
 
     def _coord_from_position(self, x, y):
-        # Convertir píxeles a coordenadas de matriz
         effective_size = self.cell_size + 2
         col = int(x // effective_size)
         row = int(y // effective_size)
@@ -202,10 +204,6 @@ class SopaDeLetrasScreen(ft.Column):
         self._check_word()
 
     def _calculate_tolerant_path(self):
-        """
-        3. SELECCIÓN INTELIGENTE: Detecta si quieres ir horizontal, vertical
-        o diagonal y 'imanta' la selección a esa línea.
-        """
         if not self.start_coord or not self.current_coord:
             return
 
@@ -220,29 +218,24 @@ class SopaDeLetrasScreen(ft.Column):
             self._refresh_grid_colors()
             return
 
-        # Calcular ángulo para determinar dirección
         angle = math.degrees(math.atan2(dr, dc)) % 360
+        direction = None
 
-        direction = None  # 'H', 'V', 'D1', 'D2'
-
-        # Tolerancia angular para facilitar la selección
         if (337.5 <= angle or angle < 22.5) or (157.5 <= angle < 202.5):
             direction = 'H'
         elif (67.5 <= angle < 112.5) or (247.5 <= angle < 292.5):
             direction = 'V'
         elif (22.5 <= angle < 67.5) or (202.5 <= angle < 247.5):
-            direction = 'D1'  # \
+            direction = 'D1'
         elif (112.5 <= angle < 157.5) or (292.5 <= angle < 337.5):
-            direction = 'D2'  # /
+            direction = 'D2'
 
-        # Ajustar punto final (Snapping)
         final_r, final_c = r2, c2
-
         if direction == 'H':
             final_r = r1
         elif direction == 'V':
             final_c = c1
-        elif direction == 'D1':  # Diagonal perfecta
+        elif direction == 'D1':
             dist = max(abs(dr), abs(dc))
             final_r = r1 + (dist * (1 if dr > 0 else -1))
             final_c = c1 + (dist * (1 if dc > 0 else -1))
@@ -251,11 +244,9 @@ class SopaDeLetrasScreen(ft.Column):
             final_r = r1 + (dist * (1 if dr > 0 else -1))
             final_c = c1 + (dist * (1 if dc > 0 else -1))
 
-        # Límites
         final_r = max(0, min(self.grid_size - 1, final_r))
         final_c = max(0, min(self.grid_size - 1, final_c))
 
-        # Generar camino
         self.current_path.clear()
         dr_final = final_r - r1
         dc_final = final_c - c1
@@ -269,7 +260,6 @@ class SopaDeLetrasScreen(ft.Column):
         self._refresh_grid_colors()
 
     def _refresh_grid_colors(self):
-        # Actualiza colores: Verde (ya encontrado), Azul (seleccionando), Blanco (normal)
         for i, cell in enumerate(self.grid_view.controls):
             coord = cell.data
             if coord in self.found_cells:
@@ -286,15 +276,12 @@ class SopaDeLetrasScreen(ft.Column):
     def _check_word(self):
         if not self.current_path: return
 
-        # Reconstruir palabra desde el path ordenado
         path_list = list(self.current_path)
         if not path_list: return
 
-        # Encontrar extremos para ordenar correctamente
         r1, c1 = self.start_coord.row, self.start_coord.col
         end_coord = max(path_list, key=lambda c: max(abs(c.row - r1), abs(c.col - c1)))
 
-        # Reconstruir línea ordenada
         line_coords = []
         dr = end_coord.row - r1
         dc = end_coord.col - c1
@@ -307,7 +294,6 @@ class SopaDeLetrasScreen(ft.Column):
 
         word_str = "".join([self.grid_data[c.row][c.col] for c in line_coords])
 
-        # Verificar palabra (normal o invertida)
         if word_str in self.words and word_str not in self.found_words:
             self._word_found(word_str, line_coords)
         elif word_str[::-1] in self.words and word_str[::-1] not in self.found_words:
@@ -324,19 +310,46 @@ class SopaDeLetrasScreen(ft.Column):
         self._draw_word_chips()
         self.words_row.update()
 
-        if len(self.found_words) == len(self.words):
-            self._show_win_dialog()
+        # Eliminamos la victoria automática para obligar a usar el botón "Enviar"
+        # if len(self.found_words) == len(self.words):
+        #     self._show_win_dialog()
 
-    def _show_win_dialog(self):
+    # --- NUEVA LÓGICA DE CALIFICACIÓN ---
+
+    def _on_submit_click(self, e):
+        """Calcula la calificación y muestra el resultado."""
+        total_palabras = len(self.words)
+        encontradas = len(self.found_words)
+
+        if total_palabras == 0:
+            calificacion = 0
+        else:
+            calificacion = (encontradas / total_palabras) * 100
+
+        aprobado = calificacion >= 70
+        self._show_result_dialog(calificacion, aprobado, encontradas, total_palabras)
+
+    def _show_result_dialog(self, calificacion, aprobado, encontradas, total):
         def close_dlg(e):
             self.page.dialog.open = False
             self.page.update()
             self._go_back()
 
+        # Configuración visual según el resultado
+        icon = ft.Icons.EMOJI_EVENTS if aprobado else ft.Icons.SENTIMENT_DISSATISFIED
+        color = ft.Colors.AMBER if aprobado else ft.Colors.RED
+        titulo = "¡Felicidades!" if aprobado else "Inténtalo de nuevo"
+        mensaje = f"Has encontrado {encontradas} de {total} palabras.\nTu calificación es: {calificacion:.1f}%"
+
         self.page.dialog = ft.AlertDialog(
-            title=ft.Text("¡Felicidades!"),
-            content=ft.Text("Has completado la sopa de letras."),
+            title=ft.Text(titulo),
+            content=ft.Column([
+                ft.Icon(icon, size=50, color=color),
+                ft.Text(mensaje, text_align=ft.TextAlign.CENTER, size=16)
+            ], height=150, alignment=ft.MainAxisAlignment.CENTER, tight=True),
             actions=[ft.TextButton("Salir", on_click=close_dlg)],
+            actions_alignment=ft.MainAxisAlignment.CENTER,
+            modal=True  # Obliga a cerrar con el botón
         )
         self.page.dialog.open = True
         self.page.update()
