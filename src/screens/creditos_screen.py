@@ -4,14 +4,15 @@ import flet as ft
 class CreditosScreen(ft.Column):
     def __init__(self, page: ft.Page):
         super().__init__(
-            scroll=ft.ScrollMode.AUTO,
+            scroll=ft.ScrollMode.AUTO,  # Habilita el scroll
+            expand=True,  # <--- ESTO ES LA CLAVE: Obliga a respetar el alto de la ventana
             spacing=10
         )
         self.page = page
 
         # Configuración de la página para esta vista
         self.page.appbar = ft.AppBar(title=ft.Text("Créditos del Proyecto"))
-        self.page.navigation_bar = None  # Ocultamos la barra de navegación principal
+        self.page.navigation_bar = None
         self.page.update()
 
         # Helper para no repetir código al crear las 'ListTile'
@@ -24,9 +25,11 @@ class CreditosScreen(ft.Column):
                 title=ft.Text(name, size=18)
             )
 
-        self.controls = [
+        # Usamos extend en lugar de asignar la lista para que se agreguen directamente a la Columna principal
+        self.controls.extend([
             ft.Container(
-                padding=ft.padding.only(top=10, bottom=20, left=20, right=20),
+                padding=ft.padding.only(top=10, bottom=40, left=20, right=20),
+                # Aumenté bottom para que no se corte el botón al final
                 content=ft.Column(
                     controls=[
                         # Introducción
@@ -37,7 +40,7 @@ class CreditosScreen(ft.Column):
                         ),
                         ft.Container(height=20),
 
-                        #Director del Proyecto
+                        # Director del Proyecto
                         ft.Text(
                             'Director del Proyecto',
                             size=18,
@@ -91,7 +94,6 @@ class CreditosScreen(ft.Column):
                         create_person_tile(name='Melo Tatenco Cristopher Donovan'),
                         ft.Container(height=30),
 
-
                         ft.Text(
                             'Documentación',
                             size=18,
@@ -109,18 +111,24 @@ class CreditosScreen(ft.Column):
                             text_align=ft.TextAlign.CENTER,
                         ),
                         ft.Container(height=20),
-                        ft.ElevatedButton("Volver a Ajustes", on_click=self.go_back, width=200)
+
+                        # Botón centrado
+                        ft.Row(
+                            [ft.ElevatedButton("Volver a Ajustes", on_click=self.go_back, width=200)],
+                            alignment=ft.MainAxisAlignment.CENTER
+                        ),
+
+                        # Espacio extra al final para asegurar que el scroll llegue hasta abajo
+                        ft.Container(height=20),
                     ],
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER
                 )
             )
-        ]
+        ])
 
     def go_back(self, e):
-        # Función para regresar a la pantalla de Ajustes, recuperando los datos
-        from src.screens.ajustes_screen import AjustesScreen  # Importación local para evitar ciclos
+        from src.screens.ajustes_screen import AjustesScreen
 
-        # Recuperamos los IDs guardados para reconstruir la pantalla de Ajustes
         id_campus = self.page.client_storage.get("idCampus")
         id_carrera = self.page.client_storage.get("idCarrera")
         id_usuario = self.page.client_storage.get("idUsuario")

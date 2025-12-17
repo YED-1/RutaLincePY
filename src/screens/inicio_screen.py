@@ -1,5 +1,5 @@
 import flet as ft
-import flet_video as fv  # <--- Usamos flet_video
+import flet_video as fv
 import uuid
 from src.database.database import DatabaseHelper
 from src.widgets.comments_widget import CommentsWidget
@@ -23,7 +23,7 @@ class InicioScreen(ft.Column):
 
         self.area_tabs = ft.Row(scroll=ft.ScrollMode.AUTO)
 
-        # 1. Creamos un placeholder inicial.
+        # Placeholder inicial
         self.video_player = ft.Container(
             width=360,
             height=240,
@@ -31,17 +31,14 @@ class InicioScreen(ft.Column):
             content=ft.ProgressRing()
         )
 
-        # Título y Descripción
         self.video_title = ft.Text(size=26, weight=ft.FontWeight.BOLD)
         self.video_description = ft.Text(size=18, text_align=ft.TextAlign.JUSTIFY)
 
-        # Botón de Comentarios
         self.comments_button = ft.IconButton(
             icon=ft.Icons.COMMENT_OUTLINED,
             tooltip="Ver comentarios y quiz",
         )
 
-        # Botones de Navegación
         self.prev_button = ft.IconButton(
             icon=ft.Icons.SKIP_PREVIOUS_ROUNDED,
             on_click=self._on_prev_video_click,
@@ -60,7 +57,6 @@ class InicioScreen(ft.Column):
             spacing=50
         )
 
-        # Columna de la vista de video
         self.video_view_column = ft.Column(
             [
                 self.video_player,
@@ -77,7 +73,6 @@ class InicioScreen(ft.Column):
             horizontal_alignment=ft.CrossAxisAlignment.CENTER
         )
 
-        # Contenido principal (empieza cargando)
         self.main_content = ft.Container(
             content=ft.Column(
                 [ft.ProgressRing(), ft.Text("Cargando...")],
@@ -96,6 +91,7 @@ class InicioScreen(ft.Column):
 
     def did_mount(self):
         print("--- DEBUG: InicioScreen.did_mount() ---")
+        # Importación diferida para evitar ciclos circulares
         from src.widgets.nav_bar_widget import create_nav_bar
         self._save_user_data()
 
@@ -129,9 +125,19 @@ class InicioScreen(ft.Column):
     def _load_areas(self):
         print(f"--- DEBUG: _load_areas() para id_carrera='{self.id_carrera}' ---")
         self.areas = self.db_helper.get_areas_id_carrera(self.id_carrera)
-        print(f"--- DEBUG: {len(self.areas)} Áreas encontradas.")
+
         self.area_tabs.controls.clear()
+
+        # Validar si hay áreas
+        if not self.areas:
+            print("--- DEBUG: No se encontraron áreas.")
+            self.main_content.content = ft.Text("No se encontraron áreas para esta carrera.")
+            self.update()
+            return
+
         for i, area in enumerate(self.areas):
+            # Usamos .get() por seguridad
+            nombre_area = area.get('Nombre', 'Área sin nombre')
             self.area_tabs.controls.append(
                 ft.GestureDetector(
                     on_tap=lambda e, index=i: self._on_area_tap(index),
@@ -141,7 +147,7 @@ class InicioScreen(ft.Column):
                         bgcolor=ft.Colors.BLUE_900 if i == self.current_area_index else ft.Colors.BLUE_100,
                         border_radius=12,
                         content=ft.Text(
-                            area['Nombre'],
+                            nombre_area,
                             color=ft.Colors.WHITE if i == self.current_area_index else ft.Colors.BLACK,
                         )
                     )
@@ -151,19 +157,20 @@ class InicioScreen(ft.Column):
         self._load_videos()
 
     def _load_videos(self):
-        print("--- DEBUG: _load_videos() ---")
-        if not self.areas:
-            print("--- DEBUG: No hay áreas, mostrando mensaje.")
-            self.main_content.content = ft.Text("No hay áreas para esta carrera.")
-            self.page.update()
-            return
+        if not self.areas: return
 
-        area_id = self.areas[self.current_area_index]['ID_Area']
+        # Aseguramos que el índice sea válido
+        if self.current_area_index >= len(self.areas):
+            self.current_area_index = 0
+
+        area_id = self.areas[self.current_area_index].get('ID_Area')
+
         print(f"--- DEBUG: Buscando videos para id_area='{area_id}'")
         self.videos = self.db_helper.get_videos_by_id_area(area_id)
-        if not self.videos:  # Doble chequeo
-            print("--- DEBUG: No hay videos (query vacía), mostrando mensaje.")
-            self.main_content.content = ft.Text("No hay videos para esta área.")
+
+        if not self.videos:
+            print("--- DEBUG: No hay videos para esta área.")
+            self.main_content.content = ft.Text("No hay videos disponibles en esta área.")
             self.page.update()
             return
 
@@ -171,129 +178,94 @@ class InicioScreen(ft.Column):
         self._initialize_video()
 
     def _initialize_video(self):
-        print("--- DEBUG: _initialize_video() ---")
         self.main_content.content = self.video_view_column
         video_data = self.videos[self.video_index]
-        video_id = video_data['ID_Video']
-        print(f"--- DEBUG: Inicializando video '{video_data.get('Nombre')}' (ID: {video_id}) ---")
+        video_id = video_data.get('ID_Video')  # .get() es más seguro
 
+        # Obtener URL con manejo de errores
         video_url_raw = video_data.get('URL_Video')
-        if not isinstance(video_url_raw, str) or not video_url_raw:
-            self.main_content.content = ft.Text(f"Error: URL de video inválida.")
-            self.page.update()
-            return
+        if not video_url_raw:
+            video_url_raw = "video_placeholder"  # Evitar crash si es None
 
-        video_url = video_url_raw.strip()
+        # Lógica híbrida: Si empieza con http es web, si no es local
+        if video_url_raw.startswith("http"):
+            video_path = video_url_raw
+        else:
+            video_path = f"assets/videos/{video_url_raw}.mp4"
 
-        # --- RUTA FINAL Y CORRECTA ---
-        # "flet_video" busca desde la raíz del proyecto (RutaLincePY)
-        video_path = f"assets/videos/{video_url}.mp4"
+        print(f"--- DEBUG: Reproduciendo: '{video_path}' ---")
 
-        print(f"--- DEBUG: Cargando video local: '{video_path}' ---")
-
-        # 1. Creamos la lista de medios
+        # Configuración del reproductor
         media = [fv.VideoMedia(video_path)]
-
-        # 2. Objeto de video NUEVO
         new_video_player = fv.Video(
-            playlist=media,  # Pasamos la media al crearlo
-            autoplay=True,  # Hay que dejar que se reproduzca solo
+            playlist=media,
+            autoplay=True,
             width=360,
             height=240,
             show_controls=True,
             on_completed=self._on_video_ended
         )
 
-        # 3. Guardamos la nueva referencia y la reemplazamos en el layout
         self.video_player = new_video_player
-        self.video_view_column.controls[0] = self.video_player  # Reemplaza el placeholder
+        self.video_view_column.controls[0] = self.video_player
 
-
+        # Actualizar textos UI
         self.video_title.value = video_data.get('Nombre', 'Sin Título')
         self.video_description.value = video_data.get('Descripción', 'Sin Descripción')
-        self.comments_button.on_click = lambda _, video_id=video_id: self._show_comments(video_id)
-
+        self.comments_button.on_click = lambda _, vid=video_id: self._show_comments(vid)
 
         self.page.update()
-        print("--- DEBUG: main_content actualizado.")
 
     def _show_comments(self, video_id: str):
         print(f"--- DEBUG: _show_comments() para video_id='{video_id}' ---")
         try:
-            # Cerrar bottom sheet existente si hay uno
             if hasattr(self.page, 'bottom_sheet') and self.page.bottom_sheet is not None:
-                print("--- DEBUG: Cerrando BottomSheet existente.")
                 self.page.bottom_sheet.open = False
                 self.page.update()
 
-            print("--- DEBUG: Creando CommentsWidget...")
-
-            # Crear el CommentsWidget
             comments_widget = CommentsWidget(
                 page=self.page,
                 video_id=video_id,
                 id_usuario=self.id_usuario
             )
 
-            # Crear el BottomSheet con configuración completa
             bottom_sheet = ft.BottomSheet(
                 ft.Container(
                     content=comments_widget,
                     padding=15,
                     border_radius=ft.border_radius.vertical(top=20),
-                    height=self.page.height * 0.85  # Usar page.height en lugar de window_height
+                    height=self.page.height * 0.85
                 ),
                 open=True,
-                on_dismiss=lambda _: print("--- DEBUG: BottomSheet cerrado ---")
+                # Evitar referencia circular al cerrar
+                on_dismiss=lambda _: None
             )
 
-            # Añadir el BottomSheet a la página
             self.page.overlay.append(bottom_sheet)
-            self.page.bottom_sheet = bottom_sheet  # Mantener referencia
-
-            print("--- DEBUG: BottomSheet creado y añadido a overlay. Actualizando página...")
+            self.page.bottom_sheet = bottom_sheet
             self.page.update()
-            print("--- DEBUG: page.update() completado.")
 
         except Exception as e:
-            print(f"\n\n¡¡¡ERROR en _show_comments!!!")
-            print(f"Error: {e}")
+            print(f"ERROR en _show_comments: {e}")
             traceback.print_exc()
 
-            # Fallback: mostrar diálogo de error
-            self.page.show_dialog(
-                ft.AlertDialog(
-                    title=ft.Text("Error"),
-                    content=ft.Text(f"No se pudieron cargar los comentarios: {str(e)}"),
-                    actions=[ft.TextButton("OK", on_click=lambda e: self.page.close_dialog())]
-                )
-            )
-
-    def _on_video_update(self, e):
-        pass  # fv.Video no tiene este evento
-
     def _on_area_tap(self, index):
-        print(f"--- DEBUG: _on_area_tap() - Pestaña {index} presionada.")
-
+        # Intentar pausar antes de cambiar
         if isinstance(self.video_player, fv.Video):
             try:
-                print("--- DEBUG: Pausando video actual.")
                 self.video_player.pause()
-            except Exception as e:
-                print(f"--- DEBUG ADVERTENCIA: No se pudo pausar el video: {e}")
-        else:
-            print("--- DEBUG: No hay video que pausar (es un Container).")
+            except:
+                pass
 
         self.current_area_index = index
         self._load_areas()
 
     def _on_prev_video_click(self, e):
-        print("--- DEBUG: _on_prev_video_click() ---")
         if isinstance(self.video_player, fv.Video):
             try:
                 self.video_player.pause()
-            except Exception as e:
-                print(f"--- DEBUG ADVERTENCIA: No se pudo pausar el video (prev): {e}")
+            except:
+                pass
 
         if self.video_index > 0:
             self.video_index -= 1
@@ -302,12 +274,11 @@ class InicioScreen(ft.Column):
         self._initialize_video()
 
     def _on_next_video_click(self, e):
-        print("--- DEBUG: _on_next_video_click() ---")
         if isinstance(self.video_player, fv.Video):
             try:
                 self.video_player.pause()
-            except Exception as e:
-                print(f"--- DEBUG ADVERTENCIA: No se pudo pausar el video (next): {e}")
+            except:
+                pass
 
         if self.video_index < len(self.videos) - 1:
             self.video_index += 1
@@ -316,5 +287,6 @@ class InicioScreen(ft.Column):
         self._initialize_video()
 
     def _on_video_ended(self, e):
-        print("--- DEBUG: Video terminado. Cargando el siguiente. ---")
-        #self._on_next_video_click(e) NO QUITAR COMENTARIO, SE CREA UN MEGA BUCLE JAJAJA
+        print("--- DEBUG: Video terminado. ---")
+        # Opcional: Auto-play siguiente video
+        # self._on_next_video_click(e)

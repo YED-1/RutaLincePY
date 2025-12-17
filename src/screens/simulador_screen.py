@@ -1,4 +1,5 @@
 import flet as ft
+# CORRECCIÓN 1: Importar del archivo correcto
 from src.database.database import DatabaseHelper
 
 
@@ -23,6 +24,7 @@ class SimuladorScreen(ft.Column):
         self.controls = [self.content_area]
 
     def did_mount(self):
+        # Importación diferida para evitar ciclos
         from src.widgets.nav_bar_widget import create_nav_bar
 
         self.page.appbar = None
@@ -38,8 +40,10 @@ class SimuladorScreen(ft.Column):
 
     def _fetch_data(self):
         print(f"--- DEBUG (Simulador): Querying DB for Simuladores with id_carrera='{self.id_carrera}' ---")
+
+        # Esto llama al método de FirebaseHelper que ya mapea 'NombreArea'
         simuladores = self.db_helper.get_simuladores_con_area_by_id_carrera(self.id_carrera)
-        print(f"--- DEBUG (Simulador): Found {len(simuladores)} Simuladores. Data: {simuladores} ---")
+        print(f"--- DEBUG (Simulador): Found {len(simuladores)} Simuladores. ---")
 
         if not simuladores:
             print("--- DEBUG (Simulador): No Simuladores found. Displaying message. ---")
@@ -65,12 +69,19 @@ class SimuladorScreen(ft.Column):
         self.update()
 
     def create_card(self, simulador: dict):
+        # CORRECCIÓN 2: Uso de .get() y manejo de minúsculas
+        # En Firebase guardamos 'id_area', 'longitud', etc.
+        # El helper agrega 'ID_Simulador' y 'NombreArea' manualmente.
+
         card_data = {
-            'id_area': simulador['ID_Area'],
-            'longitud': simulador['Longitud'],
-            'id_simulador': simulador['ID_Simulador'],
-            'nombre_area': simulador.get('NombreArea', 'Área Desconocida')
+            'id_area': simulador.get('id_area'),  # Clave en minúscula desde Firebase
+            'longitud': simulador.get('Longitud', 0),  # Helper lo pone en Mayúscula o Minúscula según la función
+            'id_simulador': simulador.get('ID_Simulador'),
+            'nombre_area': simulador.get('NombreArea', 'Área General')
         }
+
+        # Validar longitud por si viene None
+        texto_preguntas = str(card_data['longitud']) if card_data['longitud'] else "N/A"
 
         # Crear tarjeta con efecto hover
         return ft.Container(
@@ -99,7 +110,7 @@ class SimuladorScreen(ft.Column):
                                             size=28
                                         ),
                                         ft.Text(
-                                            simulador.get('NombreArea', 'Área Desconocida'),
+                                            card_data['nombre_area'],
                                             size=20,
                                             weight=ft.FontWeight.BOLD,
                                             color=ft.Colors.BLUE_900,
@@ -117,14 +128,14 @@ class SimuladorScreen(ft.Column):
                                         ft.Row(
                                             controls=[
                                                 ft.Icon(ft.Icons.FACT_CHECK, size=16, color=ft.Colors.BLUE_700),
-                                                ft.Text(f"Simulador: {simulador['ID_Simulador']}",
+                                                ft.Text(f"Simulador: {card_data['id_simulador']}",
                                                         size=14, color=ft.Colors.GREY_700),
                                             ]
                                         ),
                                         ft.Row(
                                             controls=[
                                                 ft.Icon(ft.Icons.QUESTION_ANSWER, size=16, color=ft.Colors.BLUE_700),
-                                                ft.Text(f"Preguntas: {simulador['Longitud']}",
+                                                ft.Text(f"Preguntas: {texto_preguntas}",
                                                         size=14, color=ft.Colors.GREY_700),
                                             ]
                                         ),
@@ -184,6 +195,8 @@ class SimuladorScreen(ft.Column):
 
             # Navegar a la pantalla de preguntas
             self.page.clean()
+
+            # Pasamos los datos necesarios
             nueva_pantalla = PreguntasScreen(
                 page=self.page,
                 id_area=card_data['id_area'],
@@ -196,10 +209,15 @@ class SimuladorScreen(ft.Column):
 
         except Exception as ex:
             print(f"--- DEBUG (Simulador): ERROR in _on_card_click: {ex} ---")
-            # Mostrar error al usuario
-            self.page.show_snack_bar(
-                ft.SnackBar(
-                    content=ft.Text(f"Error al cargar el simulador: {str(ex)}"),
-                    action="OK"
-                )
+            import traceback
+            traceback.print_exc()
+
+            # Restaurar la vista si falla
+            self._fetch_data()
+
+            self.page.snack_bar = ft.SnackBar(
+                content=ft.Text(f"Error al abrir el simulador: Verifique conexión."),
+                action="OK"
             )
+            self.page.snack_bar.open = True
+            self.page.update()

@@ -63,45 +63,54 @@ class PreguntasScreen(ft.Column):
                 return
 
             random.shuffle(todas_preguntas)
-            preguntas_limitadas = todas_preguntas[:self.longitud]
+            # Aseguramos no pedir más preguntas de las que existen
+            limite = min(len(todas_preguntas), self.longitud)
+            preguntas_limitadas = todas_preguntas[:limite]
+
             print(f"--- DEBUG (Preguntas): Seleccionadas {len(preguntas_limitadas)} preguntas ---")
 
-            # Obtener IDs de temas únicos
-            ids_temas = list({p['ID_Tema'] for p in preguntas_limitadas})
-            print(f"--- DEBUG (Preguntas): IDs de temas encontrados: {ids_temas} ---")
-
             # Obtener nombres de temas
+            # CORRECCIÓN 2: Eliminé la llamada a 'get_nombres_temas_por_ids' que no existe en FirebaseHelper
+            # y usamos directamente la lógica iterativa que es más segura en esta migración.
             nombres_temas = {}
-            try:
-                nombres_temas = self.db_helper.get_nombres_temas_por_ids(ids_temas)
-                print(f"--- DEBUG (Preguntas): Nombres de temas obtenidos: {nombres_temas} ---")
-            except Exception as e:
-                print(f"--- DEBUG (Preguntas): Falló get_nombres_temas_por_ids, usando alternativa: {e} ---")
-                for id_tema in ids_temas:
-                    tema = self.db_helper.get_tema_by_id(id_tema)
-                    if tema:
-                        nombres_temas[id_tema] = tema.get('Nombre', f'Tema {id_tema}')
-                    else:
-                        nombres_temas[id_tema] = f'Tema {id_tema}'
+            ids_temas = list({p.get('ID_Tema') for p in preguntas_limitadas if p.get('ID_Tema')})
+
+            print(f"--- DEBUG (Preguntas): Buscando nombres para temas: {ids_temas} ---")
+
+            for id_tema in ids_temas:
+                # El helper de Firebase ya tiene este método
+                tema = self.db_helper.get_tema_by_id(id_tema)
+                if tema:
+                    nombres_temas[id_tema] = tema.get('Nombre', f'Tema {id_tema}')
+                else:
+                    nombres_temas[id_tema] = "General"
 
             # Preparar preguntas
             for p in preguntas_limitadas:
-                correcta_texto = p['Opcion_Correcta']
+                # Usamos .get() para seguridad
+                correcta_texto = p.get('Opcion_Correcta', '')
 
-                # Crear lista de opciones (solo incluir opciones no vacías)
-                opciones = [p['Opcion_A'], p['Opcion_B'], correcta_texto]
+                # Crear lista de opciones
+                opciones = [
+                    p.get('Opcion_A', ''),
+                    p.get('Opcion_B', ''),
+                    correcta_texto
+                ]
 
-                # Solo agregar Opcion_C si existe y no está vacía
-                if 'Opcion_C' in p and p['Opcion_C'] and p['Opcion_C'].strip():
-                    opciones.append(p['Opcion_C'])
+                # Solo agregar Opcion_C si existe
+                op_c = p.get('Opcion_C')
+                if op_c and str(op_c).strip():
+                    opciones.append(op_c)
 
-                # Eliminar duplicados y mezclar
-                opciones = list(set(opciones))
+                # Eliminar vacíos y duplicados
+                opciones = list(set([opt for opt in opciones if opt]))
                 random.shuffle(opciones)
 
                 p['opciones_mezcladas'] = opciones
                 p['_respuesta_correcta_texto'] = correcta_texto
-                p['Nombre_Tema'] = nombres_temas.get(p['ID_Tema'], 'Desconocido')
+
+                id_tema_actual = p.get('ID_Tema')
+                p['Nombre_Tema'] = nombres_temas.get(id_tema_actual, 'General')
 
             self.preguntas = preguntas_limitadas
             self._build_quiz_view()
@@ -112,7 +121,6 @@ class PreguntasScreen(ft.Column):
             self._mostrar_error(f"Error al cargar preguntas: {str(e)}")
 
     def _mostrar_error(self, mensaje):
-        """Muestra un mensaje de error"""
         self.controls.clear()
         self.controls.append(
             ft.Column(
@@ -133,7 +141,6 @@ class PreguntasScreen(ft.Column):
         self.update()
 
     def _volver_a_simulador(self, e=None):
-        """Vuelve a la pantalla de simulador"""
         from src.screens.simulador_screen import SimuladorScreen
         self.page.clean()
         id_carrera = self.page.client_storage.get("idCarrera")
@@ -146,8 +153,6 @@ class PreguntasScreen(ft.Column):
             if not self.preguntas:
                 self._mostrar_error("No hay preguntas disponibles.")
                 return
-
-            print(f"--- DEBUG (Preguntas): Construyendo vista con {len(self.preguntas)} preguntas ---")
 
             question_widgets = []
 
@@ -184,19 +189,19 @@ class PreguntasScreen(ft.Column):
                                     alignment=ft.alignment.center,
                                     content=ft.Text(f"{i + 1}", color=ft.Colors.WHITE, weight=ft.FontWeight.BOLD)
                                 ),
-                                ft.Text(f"{p['Pregunta']}",
+                                ft.Text(f"{p.get('Pregunta', 'Pregunta sin texto')}",
                                         weight=ft.FontWeight.BOLD, size=16, expand=True),
                             ]),
                             ft.Container(
                                 padding=ft.padding.only(left=35),
-                                content=ft.Text(f"Tema: {p['Nombre_Tema']}",
+                                content=ft.Text(f"Tema: {p.get('Nombre_Tema', 'General')}",
                                                 size=14, color=ft.Colors.GREY_600),
                             ),
                         ])
                     )
                 )
 
-                # Opciones de respuesta - CORRECCIÓN AQUÍ, ft radio solo espera un string simple y no un objeto ft.text 05/12/2025
+                # Opciones de respuesta
                 opciones_radio = ft.RadioGroup(
                     content=ft.Column([
                         ft.Container(
@@ -205,8 +210,8 @@ class PreguntasScreen(ft.Column):
                             border=ft.border.all(1, ft.Colors.GREY_200),
                             border_radius=6,
                             content=ft.Radio(
-                                value=opt,  # Solo el texto como valor
-                                label=opt,  # Solo el texto como label, NO ft.Text(opt)
+                                value=str(opt),
+                                label=str(opt),
                                 fill_color=ft.Colors.BLUE_900
                             )
                         ) for opt in p['opciones_mezcladas']
@@ -237,7 +242,6 @@ class PreguntasScreen(ft.Column):
             self.controls.clear()
             self.controls.extend(question_widgets)
             self.update()
-            print("--- DEBUG (Preguntas): Vista construida exitosamente ---")
 
         except Exception as e:
             print(f"--- DEBUG (Preguntas): ERROR en _build_quiz_view: {e} ---")
@@ -246,20 +250,17 @@ class PreguntasScreen(ft.Column):
 
     def _on_option_selected(self, question_index, selected_value):
         self.opciones_seleccionadas[question_index] = selected_value
-        # Habilitar botón si todas las preguntas tienen respuesta
         self.submit_button.disabled = len(self.opciones_seleccionadas) < len(self.preguntas)
         self.update()
 
     def _obtener_comentario_por_opcion(self, pregunta, opcion_seleccionada):
         """Obtiene el comentario específico para la opción seleccionada"""
-        # Mapear opciones a sus comentarios
         comentarios_map = {
             pregunta.get('Opcion_A', ''): pregunta.get('Comentario_A', ''),
             pregunta.get('Opcion_B', ''): pregunta.get('Comentario_B', ''),
             pregunta.get('Opcion_C', ''): pregunta.get('Comentario_C', ''),
             pregunta.get('Opcion_Correcta', ''): pregunta.get('Comentario_Correcta', '¡Respuesta correcta!')
         }
-
         return comentarios_map.get(opcion_seleccionada, '')
 
     def _mostrar_resultado_popup(self, e):
@@ -280,16 +281,15 @@ class PreguntasScreen(ft.Column):
                 if es_correcta:
                     correctas += 1
 
-                id_tema = p['ID_Tema']
+                id_tema = p.get('ID_Tema', 'General')
                 total_por_tema[id_tema] = total_por_tema.get(id_tema, 0) + 1
                 if es_correcta:
                     aciertos_por_tema[id_tema] = aciertos_por_tema.get(id_tema, 0) + 1
 
-                # Obtener comentario basado en la opción seleccionada
                 comentario_seleccion = self._obtener_comentario_por_opcion(p, seleccion)
                 comentario_correcto = p.get('Comentario_Correcta', '¡Respuesta correcta!')
 
-                # Detalle de cada respuesta con comentarios
+                # Detalle visual de la respuesta
                 detalles_respuestas.append(
                     ft.Container(
                         padding=12,
@@ -308,7 +308,6 @@ class PreguntasScreen(ft.Column):
                             ]),
                             ft.Text(f"Tu respuesta: {seleccion}", size=12, weight=ft.FontWeight.BOLD),
 
-                            # Mostrar comentario específico de la opción seleccionada
                             ft.Container(
                                 padding=ft.padding.only(left=10, top=5, bottom=5),
                                 content=ft.Column([
@@ -328,7 +327,7 @@ class PreguntasScreen(ft.Column):
                     )
                 )
 
-            # Guardar resultados en la base de datos
+            # Guardar resultados
             print("--- DEBUG (Preguntas): Guardando resultados en BD ---")
             fecha_actual = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
@@ -336,8 +335,8 @@ class PreguntasScreen(ft.Column):
                 aciertos = aciertos_por_tema.get(id_tema, 0)
                 porcentaje = (aciertos / total) * 100 if total > 0 else 0
 
-                print(f"--- DEBUG (Preguntas): Guardando tema {id_tema} - {aciertos}/{total} = {porcentaje:.1f}% ---")
-
+                # Guardamos usando el helper de Firebase
+                # Nota: id_tema puede ser 'General' si no se encontró, la BD lo aceptará
                 self.db_helper.guardar_calificacion_por_tema(
                     id_usuario=self.id_usuario,
                     id_tema=id_tema,
@@ -348,31 +347,23 @@ class PreguntasScreen(ft.Column):
                     fecha=fecha_actual
                 )
 
-            # Calcular porcentaje total
             porcentaje_total = (correctas / len(self.preguntas)) * 100
 
-            # Determinar color según el resultado
+            # Definir UI del resultado
             color_resultado = ft.Colors.GREEN if porcentaje_total >= 70 else ft.Colors.ORANGE if porcentaje_total >= 50 else ft.Colors.RED
             icono_resultado = ft.Icons.EMOJI_EVENTS if porcentaje_total >= 70 else ft.Icons.WARNING if porcentaje_total >= 50 else ft.Icons.SENTIMENT_DISSATISFIED
 
-            print(
-                f"--- DEBUG (Preguntas): Resultado final: {correctas}/{len(self.preguntas)} = {porcentaje_total:.1f}% ---")
-
-            # Crear función para cerrar y volver
             def close_and_go_back(e):
-                print("--- DEBUG (Preguntas): Cerrando resultados y volviendo al simulador ---")
                 if hasattr(self.page, 'bottom_sheet') and self.page.bottom_sheet:
                     self.page.bottom_sheet.open = False
                     self.page.update()
                 self._volver_a_simulador()
 
-            # Crear el BottomSheet de resultados
             bottom_sheet_content = ft.BottomSheet(
                 ft.Container(
                     padding=20,
                     height=600,
                     content=ft.Column([
-                        # Header del resultado
                         ft.Container(
                             padding=20,
                             bgcolor=ft.Colors.BLUE_50,
@@ -382,23 +373,17 @@ class PreguntasScreen(ft.Column):
                                 ft.Column([
                                     ft.Text(
                                         f"Resultado: {correctas}/{len(self.preguntas)}",
-                                        size=24,
-                                        weight=ft.FontWeight.BOLD,
-                                        color=color_resultado
+                                        size=24, weight=ft.FontWeight.BOLD, color=color_resultado
                                     ),
                                     ft.Text(
                                         f"Calificación: {porcentaje_total:.1f}%",
-                                        size=18,
-                                        color=color_resultado
+                                        size=18, color=color_resultado
                                     ),
                                 ], expand=True)
                             ])
                         ),
-
                         ft.Text(f"Tiempo total: {tiempo_total} segundos", size=14, color=ft.Colors.GREY_600),
                         ft.Divider(height=20),
-
-                        # Detalle de respuestas
                         ft.Text("Detalle de respuestas:", weight=ft.FontWeight.BOLD, size=16),
                         ft.Container(
                             content=ft.ListView(
@@ -408,8 +393,6 @@ class PreguntasScreen(ft.Column):
                             ),
                             height=300,
                         ),
-
-                        # Botón de acción
                         ft.Container(
                             padding=ft.padding.only(top=20),
                             content=ft.ElevatedButton(
@@ -426,22 +409,14 @@ class PreguntasScreen(ft.Column):
                     ], scroll=ft.ScrollMode.ADAPTIVE)
                 ),
                 open=True,
-                on_dismiss=lambda _: print("--- DEBUG (Preguntas): BottomSheet cerrado ---")
+                on_dismiss=lambda _: None
             )
 
-            # Mostrar el BottomSheet
             self.page.overlay.append(bottom_sheet_content)
             self.page.bottom_sheet = bottom_sheet_content
             self.page.update()
 
-            print("--- DEBUG (Preguntas): Resultados mostrados exitosamente ---")
-
         except Exception as ex:
-            print(f"--- DEBUG (Preguntas): ERROR en _mostrar_resultado_popup: {ex} ---")
+            print(f"--- DEBUG ERROR: {ex} ---")
             traceback.print_exc()
-            self.page.show_snack_bar(
-                ft.SnackBar(
-                    content=ft.Text(f"Error al mostrar resultados: {str(ex)}"),
-                    bgcolor=ft.Colors.RED
-                )
-            )
+            self.page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Error: {str(ex)}")))

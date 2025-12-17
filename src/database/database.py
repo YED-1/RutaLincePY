@@ -1,436 +1,397 @@
-import sqlite3
+import firebase_admin
+from firebase_admin import credentials, firestore
 import os
+import random
+import datetime
 
+# --- CONFIGURACIÓN DE CONEXIÓN ---
+# Verificamos si ya está inicializado para evitar errores al recargar Flet
+if not firebase_admin._apps:
+    # Ajustamos la ruta para buscar credenciales.json en la misma carpeta que este archivo
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    cred_path = os.path.join(base_dir, "credenciales.json")
 
-# import uuid
-# import datetime
+    if os.path.exists(cred_path):
+        cred = credentials.Certificate(cred_path)
+        firebase_admin.initialize_app(cred)
+    else:
+        print(f"⚠️ ERROR: No se encontró el archivo {cred_path}")
 
 
 class DatabaseHelper:
-    def __init__(self, db_name="ruta_lince.db"):
-        self.base_dir = os.path.dirname(os.path.abspath(__file__))
-        self.db_path = os.path.join(self.base_dir, db_name)
-        self._ensure_tables_exist_and_populate()
+    def __init__(self, db_name=None):
+        # db_name se mantiene por compatibilidad, pero no se usa en Firebase
+        self.db = firestore.client()
 
-    def _get_connection(self):
-        """Creates and returns a new thread-safe connection."""
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        return conn
+    # ==========================================
+    #      MÉTODOS DE LECTURA (GET)
+    # ==========================================
 
-    def _ensure_tables_exist_and_populate(self):
-        """Ensures tables exist and calls the CSV loader if needed."""
-        conn = self._get_connection()
-        cursor = conn.cursor()
-
-        create_table_queries = [
-            '''CREATE TABLE IF NOT EXISTS Campus (ID_Campus TEXT PRIMARY KEY, Nombre TEXT, Estado TEXT)''',
-            '''CREATE TABLE IF NOT EXISTS Carrera (ID_Carrera TEXT PRIMARY KEY, Nombre TEXT, Estado TEXT)''',
-            '''CREATE TABLE IF NOT EXISTS Usuario (ID_Usuario TEXT PRIMARY KEY, ID_Campus TEXT, ID_Carrera TEXT, FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera), FOREIGN KEY (ID_Campus) REFERENCES Campus(ID_Campus))''',
-            '''CREATE TABLE IF NOT EXISTS Carrera_Campus (ID_Carrera_Campus TEXT PRIMARY KEY, ID_Carrera TEXT, ID_Campus TEXT, FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera), FOREIGN KEY (ID_Campus) REFERENCES Campus(ID_Campus))''',
-            '''CREATE TABLE IF NOT EXISTS Area (ID_Area TEXT PRIMARY KEY, Nombre TEXT, Estado TEXT, ID_Carrera TEXT, FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera))''',
-            '''CREATE TABLE IF NOT EXISTS Tema (ID_Tema TEXT PRIMARY KEY, Nombre TEXT, ID_Area TEXT, Estado TEXT, FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area))''',
-            '''CREATE TABLE IF NOT EXISTS Video (ID_Video TEXT PRIMARY KEY, Nombre TEXT, Descripción TEXT, URL_Video TEXT, Visualizaciones INTEGER DEFAULT 0, Cantidad_Likes INTEGER DEFAULT 0, Cantidad_Dislikes INTEGER DEFAULT 0, Estado TEXT, ID_Area TEXT, FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area))''',
-            '''CREATE TABLE IF NOT EXISTS Reaccion (ID_Reaccion TEXT PRIMARY KEY, Tipo TEXT, Fecha DATE, Estado TEXT, ID_Video TEXT, ID_Usuario TEXT, FOREIGN KEY (ID_Video) REFERENCES Video(ID_Video), FOREIGN KEY (ID_Usuario) REFERENCES Usuario(ID_Usuario))''',
-            '''CREATE TABLE IF NOT EXISTS Comentario (ID_Comentario TEXT PRIMARY KEY, Comentario TEXT, Fecha DATE, Estado TEXT, ID_Usuario TEXT, ID_Video TEXT, FOREIGN KEY (ID_Usuario) REFERENCES Usuario(ID_Usuario), FOREIGN KEY (ID_Video) REFERENCES Video(ID_Video))''',
-            '''CREATE TABLE IF NOT EXISTS Simulador (ID_Simulador TEXT PRIMARY KEY, Longitud INTEGER, Estado TEXT, ID_Carrera TEXT, ID_Area TEXT, FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera), FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area))''',
-            '''CREATE TABLE IF NOT EXISTS Resultado (ID_Resultado TEXT PRIMARY KEY, Calificacion REAL, Tiempo INTEGER, Fecha TEXT, ID_Tema TEXT, ID_Usuario TEXT, ID_Simulador TEXT, FOREIGN KEY (ID_Tema) REFERENCES Tema(ID_Tema), FOREIGN KEY (ID_Usuario) REFERENCES Usuario(ID_Usuario), FOREIGN KEY (ID_Simulador) REFERENCES Simulador(ID_Simulador))''',
-            '''CREATE TABLE IF NOT EXISTS Pregunta (ID_Pregunta TEXT PRIMARY KEY, Pregunta TEXT, Opcion_A TEXT, Opcion_B TEXT, Opcion_C TEXT, Opcion_Correcta TEXT, Comentario_A TEXT, Comentario_B TEXT, Comentario_C TEXT, Comentario_Correcta TEXT, Estado TEXT, ID_Video TEXT, ID_Area TEXT, ID_Tema TEXT, FOREIGN KEY (ID_Video) REFERENCES Video(ID_Video), FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area), FOREIGN KEY (ID_Tema) REFERENCES Tema(ID_Tema))''',
-            '''CREATE TABLE IF NOT EXISTS Sopa (ID_Sopa TEXT PRIMARY KEY, Cantidad_Palabras INTEGER, Estado TEXT, ID_Area TEXT, ID_Carrera TEXT, FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera), FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area))''',
-            '''CREATE TABLE IF NOT EXISTS Crucigrama (ID_Crucigrama TEXT PRIMARY KEY, Cantidad_Palabras INTEGER, Estado TEXT, ID_Area TEXT, ID_Carrera TEXT, FOREIGN KEY (ID_Carrera) REFERENCES Carrera(ID_Carrera), FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area))''',
-            '''CREATE TABLE IF NOT EXISTS Palabra (ID_Palabra TEXT PRIMARY KEY, Palabra TEXT, Descripción TEXT, Estado TEXT, ID_Area TEXT, ID_Sopa TEXT, ID_Crucigrama TEXT, FOREIGN KEY (ID_Area) REFERENCES Area(ID_Area), FOREIGN KEY (ID_Sopa) REFERENCES Sopa(ID_Sopa), FOREIGN KEY (ID_Crucigrama) REFERENCES Crucigrama(ID_Crucigrama))'''
-        ]
-
-        for query in create_table_queries:
-            cursor.execute(query)
-        conn.commit()
-
-        cursor.execute("SELECT COUNT(*) FROM Campus")
-        if cursor.fetchone()[0] == 0:
-            try:
-                from src.database import csv_loader  # Usamos import absoluto
-                csv_loader.populate_from_csv_if_empty(self, conn)
-            except ImportError as e:
-                print(f"ADVERTENCIA: No se pudo importar csv_loader ({e}). Omitiendo carga desde CSV.")
-            except Exception as e:
-                print(f"ERROR durante la carga CSV inicial: {e}")
-
-        conn.close()
-
-    def _execute_query(self, query, params=()):
-        conn = self._get_connection()
-        cursor = conn.cursor()
-        cursor.execute(query, params)
-        rows = cursor.fetchall()
-        conn.close()
-        return [dict(row) for row in rows]
-
-    def _execute_commit(self, query, params=()):
-        conn = self._get_connection()
-        cursor = conn.cursor()
-        try:
-            cursor.execute(query, params)
-            conn.commit()
-        except sqlite3.IntegrityError:
-            pass  # Ignorar duplicados
-        except Exception as e:
-            print(f"DB Error: {e}. Query: {query}, Params: {params}")
-        finally:
-            conn.close()
-
-    # --- Insertion Methods ---
-    def insert_campus(self, row):
-        self._execute_commit("INSERT OR IGNORE INTO Campus VALUES (?, ?, ?)", (row[0], row[1], row[2]))
-
-    def insert_carrera(self, row):
-        self._execute_commit("INSERT OR IGNORE INTO Carrera VALUES (?, ?, ?)", (row[0], row[1], row[2]))
-
-    def insert_carrera_campus(self, row):
-        self._execute_commit("INSERT OR IGNORE INTO Carrera_Campus VALUES (?, ?, ?)", (row[0], row[1], row[2]))
-
-    def insert_area(self, row):
-        self._execute_commit("INSERT OR IGNORE INTO Area VALUES (?, ?, ?, ?)", (row[0], row[1], row[2], row[3]))
-
-    def insert_tema(self, row):
-        self._execute_commit("INSERT OR IGNORE INTO Tema VALUES (?, ?, ?, ?)", (row[0], row[1], row[2], row[3]))
-
-    def insert_video(self, row):
-        self._execute_commit(
-            "INSERT OR IGNORE INTO Video (ID_Video, Nombre, Descripción, URL_Video, Estado, ID_Area) VALUES (?, ?, ?, ?, ?, ?)",
-            (row[0], row[1], row[2], row[3], row[8], row[9]))
-
-    def insert_pregunta(self, row):
-        if len(row) == 11:
-            # CSV antiguo: agregar columnas de comentarios vacías
-            row = list(row) + ['', '', '', '']  # Comentario_A, Comentario_B, Comentario_C, Comentario_Correcta
-
-        self._execute_commit(
-            "INSERT OR IGNORE INTO Pregunta (ID_Pregunta, Pregunta, Opcion_A, Opcion_B, Opcion_C, Opcion_Correcta, Comentario_A, Comentario_B, Comentario_C, Comentario_Correcta, Estado, ID_Video, ID_Area, ID_Tema) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9], row[10], row[11], row[12],
-             row[13])
-        )
-
-    def insert_simulador(self, row):
-        self._execute_commit("INSERT OR IGNORE INTO Simulador VALUES (?, ?, ?, ?, ?)",
-                             (row[0], int(row[1]), row[2], row[3], row[4]))
-
-    def insert_sopa(self, row):
-        self._execute_commit("INSERT OR IGNORE INTO Sopa VALUES (?, ?, ?, ?, ?)",
-                             (row[0], int(row[1]), row[2], row[3], row[4]))
-
-    def insert_crucigrama(self, row):
-        self._execute_commit("INSERT OR IGNORE INTO Crucigrama VALUES (?, ?, ?, ?, ?)",
-                             (row[0], int(row[1]), row[2], row[3], row[4]))
-
-    def insert_palabra(self, row):
-        self._execute_commit(
-            "INSERT OR IGNORE INTO Palabra (ID_Palabra, Palabra, Descripción, Estado, ID_Area, ID_Sopa, ID_Crucigrama) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (row[0], row[2], row[3], row[4], row[5], row[6], row[7]))
-
-    # --- GET Methods ---
     def get_campus(self):
-        return self._execute_query("SELECT ID_Campus, Nombre FROM Campus WHERE Estado = 'Activo'")
+        docs = self.db.collection('campus').where('estado', '==', 'Activo').stream()
+        return [{"ID_Campus": doc.id, "Nombre": doc.to_dict().get('nombre')} for doc in docs]
+
+    def get_carrera(self):
+        docs = self.db.collection('carreras').stream()
+        resultado = []
+        for doc in docs:
+            d = doc.to_dict()
+            d['ID_Carrera'] = doc.id
+            d['Nombre'] = d.get('nombre')  # Mapeo para Flet
+            resultado.append(d)
+        return resultado
 
     def get_nombres_carrera_por_id_campus(self, id_campus):
-        query = "SELECT c.Nombre FROM Carrera_Campus cc JOIN Carrera c ON cc.ID_Carrera = c.ID_Carrera WHERE cc.ID_Campus = ? AND c.Estado = 'Activo'"
-        rows = self._execute_query(query, (id_campus,))
-        return [row['Nombre'] for row in rows]
-
-    def get_id_carrera_by_nombre(self, nombre_carrera):
-        rows = self._execute_query("SELECT ID_Carrera FROM Carrera WHERE Nombre = ?", (nombre_carrera,))
-        return rows[0]['ID_Carrera'] if rows else None
+        # 1. Buscar en la colección intermedia
+        docs = self.db.collection('carrera_campus').where('id_campus', '==', id_campus).stream()
+        nombres = []
+        for doc in docs:
+            id_carrera = doc.to_dict().get('id_carrera')
+            if id_carrera:
+                carrera_doc = self.db.collection('carreras').document(id_carrera).get()
+                if carrera_doc.exists:
+                    nombres.append(carrera_doc.to_dict().get('nombre'))
+        return nombres
 
     def get_areas_id_carrera(self, id_carrera):
-        return self._execute_query("SELECT ID_Area, Nombre FROM Area WHERE ID_Carrera = ? AND Estado = 'Activo'",
-                                   (id_carrera,))
+        docs = self.db.collection('areas') \
+            .where('id_carrera', '==', id_carrera) \
+            .where('estado', '==', 'Activo').stream()
+        return [{"ID_Area": doc.id, "Nombre": doc.to_dict().get('nombre')} for doc in docs]
 
     def get_videos_by_id_area(self, id_area):
-        return self._execute_query("SELECT * FROM Video WHERE ID_Area = ? AND Estado = 'Activo'", (id_area,))
+        docs = self.db.collection('videos') \
+            .where('id_area', '==', id_area) \
+            .where('estado', '==', 'Activo').stream()
 
-    def get_campus_by_id(self, id_campus):
-        rows = self._execute_query("SELECT * FROM Campus WHERE ID_Campus = ?", (id_campus,))
-        return rows[0] if rows else None
+        videos = []
+        for doc in docs:
+            data = doc.to_dict()
+            data['ID_Video'] = doc.id
+            # Mapeo de campos a Mayúsculas como espera tu app antigua
+            data['Nombre'] = data.get('nombre')
+            data['Descripción'] = data.get('descripcion')
+            data['URL_Video'] = data.get('url_video')
+            data['Visualizaciones'] = data.get('visualizaciones', 0)
 
-    def get_carrera_by_id(self, id_carrera):
-        rows = self._execute_query("SELECT * FROM Carrera WHERE ID_Carrera = ?", (id_carrera,))
-        return rows[0] if rows else None
+            # --- PARCHE DE SEGURIDAD ---
+            # Evitamos números negativos con max(0, valor)
+            data['Cantidad_Likes'] = max(0, data.get('cantidad_likes', 0))
 
-    def get_crucigramas_con_area_by_id_carrera(self, id_carrera):
-        query = "SELECT cr.*, ar.Nombre as NombreArea FROM Crucigrama cr JOIN Area ar ON cr.ID_Area = ar.ID_Area WHERE cr.ID_Carrera = ? AND cr.Estado = 'Activo'"
-        return self._execute_query(query, (id_carrera,))
-
-    def get_sopas_con_area_by_id_carrera(self, id_carrera):
-        query = "SELECT s.*, ar.Nombre as NombreArea FROM Sopa s JOIN Area ar ON s.ID_Area = ar.ID_Area WHERE s.ID_Carrera = ? AND s.Estado = 'Activo'"
-        return self._execute_query(query, (id_carrera,))
-
-    def get_palabras_por_sopa(self, id_sopa):
-        rows = self._execute_query("SELECT Palabra FROM Palabra WHERE ID_Sopa = ?", (id_sopa,))
-        return [row['Palabra'] for row in rows]
+            videos.append(data)
+        return videos
 
     def get_video_by_id(self, video_id):
-        rows = self._execute_query("SELECT * FROM Video WHERE ID_Video = ?", (video_id,))
-        return rows[0] if rows else None
+        doc = self.db.collection('videos').document(video_id).get()
+        if doc.exists:
+            data = doc.to_dict()
+            data['ID_Video'] = doc.id
+            data['Nombre'] = data.get('nombre')
+            data['Descripción'] = data.get('descripcion')
+            data['URL_Video'] = data.get('url_video')
+            data['Visualizaciones'] = data.get('visualizaciones', 0)
 
-    def get_user_reaction_for_video(self, video_id, user_id):
-        rows = self._execute_query("SELECT Tipo FROM Reaccion WHERE ID_Video = ? AND ID_Usuario = ?",
-                                   (video_id, user_id))
-        return rows[0]['Tipo'] if rows else None
+            # --- PARCHE DE SEGURIDAD ---
+            # Evitamos números negativos con max(0, valor)
+            data['Cantidad_Likes'] = max(0, data.get('cantidad_likes', 0))
+            data['Cantidad_Dislikes'] = max(0, data.get('cantidad_dislikes', 0))
 
-    def get_comments_by_id_video(self, video_id):
-        return self._execute_query(
-            "SELECT * FROM Comentario WHERE ID_Video = ? AND Estado = 'Activo' ORDER BY Fecha DESC", (video_id,))
-
-    def get_preguntas_por_id_area_activo(self, id_area):
-        return self._execute_query(
-            "SELECT ID_Pregunta, Pregunta, Opcion_A, Opcion_B, Opcion_C, Opcion_Correcta, Comentario_A, Comentario_B, Comentario_C, Comentario_Correcta, ID_Tema FROM Pregunta WHERE ID_Area = ? AND Estado = 'Activo' AND ID_Tema != 'No aplica'",
-            (id_area,))
-
-    def get_nombres_temas_por_ids(self, ids_tema: list):
-        if not ids_tema: return {}
-        placeholders = ','.join('?' for _ in ids_tema)
-        rows = self._execute_query(f"SELECT ID_Tema, Nombre FROM Tema WHERE ID_Tema IN ({placeholders})", ids_tema)
-        return {row['ID_Tema']: row['Nombre'] for row in rows}
-
-    def get_tema_by_id(self, id_tema):
-        rows = self._execute_query("SELECT * FROM Tema WHERE ID_Tema = ?", (id_tema,))
-        return rows[0] if rows else None
-
-    def get_simuladores_con_area_by_id_carrera(self, id_carrera):
-        query = "SELECT s.*, ar.Nombre as NombreArea FROM Simulador s JOIN Area ar ON s.ID_Area = ar.ID_Area WHERE s.ID_Carrera = ? AND s.Estado = 'Activo'"
-        return self._execute_query(query, (id_carrera,))
+            return data
+        return None
 
     def get_preguntas_por_id_video(self, video_id):
-        return self._execute_query(
-            "SELECT ID_Pregunta, Pregunta, Opcion_A, Opcion_B, Opcion_Correcta, Comentario FROM Pregunta WHERE ID_Video = ? AND Estado = 'Activo'",
-            (video_id,))
+        docs = self.db.collection('preguntas') \
+            .where('id_video', '==', video_id) \
+            .where('estado', '==', 'Activo').stream()
+
+        lista = []
+        for doc in docs:
+            d = doc.to_dict()
+            opciones = d.get('opciones', {})
+            comentarios = d.get('comentarios', {})
+
+            lista.append({
+                "ID_Pregunta": doc.id,
+                "Pregunta": d.get('pregunta'),
+                "Opcion_A": opciones.get('a'),
+                "Opcion_B": opciones.get('b'),
+                "Opcion_C": opciones.get('c'),  # Por si acaso
+                "Opcion_Correcta": d.get('opcion_correcta'),
+                "Comentario_Correcta": comentarios.get('correcta'),
+                # Agrega más campos si tu UI los pide
+            })
+        return lista
+
+    def get_preguntas_por_id_area_activo(self, id_area):
+        docs = self.db.collection('preguntas') \
+            .where('id_area', '==', id_area) \
+            .where('estado', '==', 'Activo').stream()
+
+        lista = []
+        for doc in docs:
+            d = doc.to_dict()
+            opciones = d.get('opciones', {})
+            comentarios = d.get('comentarios', {})
+            lista.append({
+                "ID_Pregunta": doc.id,
+                "Pregunta": d.get('pregunta'),
+                "Opcion_A": opciones.get('a'),
+                "Opcion_B": opciones.get('b'),
+                "Opcion_C": opciones.get('c'),
+                "Opcion_Correcta": d.get('opcion_correcta'),
+                "Comentario_A": comentarios.get('a'),
+                "Comentario_B": comentarios.get('b'),
+                "Comentario_C": comentarios.get('c'),
+                "Comentario_Correcta": comentarios.get('correcta'),
+                "ID_Tema": d.get('id_tema')
+            })
+        return lista
+
+    def get_user_reaction_for_video(self, video_id, user_id):
+        docs = self.db.collection('reacciones') \
+            .where('id_video', '==', video_id) \
+            .where('id_usuario', '==', user_id).limit(1).stream()
+        for doc in docs:
+            return doc.to_dict().get('tipo')
+        return None
+
+    def get_comments_by_id_video(self, video_id):
+        # Nota: Ordenar por fecha requiere un índice en Firebase.
+        # Si falla, remueve el .order_by o crea el índice en la consola.
+        try:
+            docs = self.db.collection('comentarios') \
+                .where('id_video', '==', video_id) \
+                .where('estado', '==', 'Activo') \
+                .order_by('fecha', direction=firestore.Query.DESCENDING).stream()
+        except Exception:
+            # Fallback si no hay índice
+            docs = self.db.collection('comentarios') \
+                .where('id_video', '==', video_id) \
+                .where('estado', '==', 'Activo').stream()
+
+        comentarios = []
+        for doc in docs:
+            d = doc.to_dict()
+            d['ID_Comentario'] = doc.id
+            d['Comentario'] = d.get('comentario')
+            # Convertir Timestamp a string para Flet
+            fecha = d.get('fecha')
+            if fecha:
+                d['Fecha'] = str(fecha)
+            comentarios.append(d)
+        return comentarios
+
+    # --- JUEGOS Y SIMULADORES ---
+
+    def get_sopas_con_area_by_id_carrera(self, id_carrera):
+        docs = self.db.collection('sopa') \
+            .where('id_carrera', '==', id_carrera) \
+            .where('estado', '==', 'Activo').stream()
+
+        resultado = []
+        for doc in docs:
+            data = doc.to_dict()
+            data['ID_Sopa'] = doc.id
+            data['Cantidad_Palabras'] = data.get('cantidad_palabras')
+
+            # Simular JOIN con Area
+            id_area = data.get('id_area')
+            if id_area:
+                area_doc = self.db.collection('areas').document(id_area).get()
+                data['NombreArea'] = area_doc.to_dict().get('nombre') if area_doc.exists else "N/A"
+
+            resultado.append(data)
+        return resultado
+
+    def get_crucigramas_con_area_by_id_carrera(self, id_carrera):
+        docs = self.db.collection('crucigrama') \
+            .where('id_carrera', '==', id_carrera) \
+            .where('estado', '==', 'Activo').stream()
+
+        resultado = []
+        for doc in docs:
+            data = doc.to_dict()
+            data['ID_Crucigrama'] = doc.id
+            data['Cantidad_Palabras'] = data.get('cantidad_palabras')
+
+            id_area = data.get('id_area')
+            if id_area:
+                area_doc = self.db.collection('areas').document(id_area).get()
+                data['NombreArea'] = area_doc.to_dict().get('nombre') if area_doc.exists else "N/A"
+
+            resultado.append(data)
+        return resultado
+
+    def get_simuladores_con_area_by_id_carrera(self, id_carrera):
+        docs = self.db.collection('simuladores') \
+            .where('id_carrera', '==', id_carrera) \
+            .where('estado', '==', 'Activo').stream()
+
+        resultado = []
+        for doc in docs:
+            data = doc.to_dict()
+            data['ID_Simulador'] = doc.id
+            data['Longitud'] = data.get('longitud')
+
+            id_area = data.get('id_area')
+            if id_area:
+                area_doc = self.db.collection('areas').document(id_area).get()
+                data['NombreArea'] = area_doc.to_dict().get('nombre') if area_doc.exists else "N/A"
+
+            resultado.append(data)
+        return resultado
+
+    def get_palabras_por_sopa(self, id_sopa):
+        docs = self.db.collection('palabras') \
+            .where('id_sopa', '==', id_sopa).stream()
+        return [doc.to_dict().get('palabra') for doc in docs]
 
     def palabra_crucigrama(self, id_crucigrama):
-        rows = self._execute_query(
-            "SELECT Palabra, Descripción FROM Palabra WHERE ID_Crucigrama = ? AND Estado = 'Activo' ORDER BY RANDOM() LIMIT 1",
-            (id_crucigrama,))
-        if rows:
-            return {'palabra': rows[0]['Palabra'], 'descripcion': rows[0]['Descripción']}
+        # Traer todas las palabras y elegir una al azar en Python
+        docs = list(self.db.collection('palabras') \
+                    .where('id_crucigrama', '==', id_crucigrama) \
+                    .where('estado', '==', 'Activo').stream())
+
+        if docs:
+            elegida = random.choice(docs)
+            d = elegida.to_dict()
+            return {'palabra': d.get('palabra'), 'descripcion': d.get('descripcion')}
         else:
             raise Exception("No se encontró una palabra para este crucigrama.")
 
-    def get_carrera(self):
-        return self._execute_query("SELECT * FROM Carrera")
+    def get_tema_by_id(self, id_tema):
+        doc = self.db.collection('temas').document(id_tema).get()
+        if doc.exists:
+            d = doc.to_dict()
+            d['ID_Tema'] = doc.id
+            d['Nombre'] = d.get('nombre')
+            return d
+        return None
 
-    def get_carrera_campus(self):
-        return self._execute_query("SELECT * FROM Carrera_Campus")
-
-    def get_video(self):
-        return self._execute_query("SELECT * FROM Video")
-
-    def get_area(self):
-        return self._execute_query("SELECT * FROM Area")
-
-    def get_pregunta(self):
-        return self._execute_query("SELECT * FROM Pregunta")
-
-    def get_comentario(self):
-        return self._execute_query("SELECT * FROM Comentario")
-
-    def get_simulador(self):
-        return self._execute_query("SELECT * FROM Simulador")
-
-    def get_crucigrama(self):
-        return self._execute_query("SELECT * FROM Crucigrama")
-
-    def get_sopa(self):
-        return self._execute_query("SELECT * FROM Sopa")
-
-    def get_palabra(self):
-        return self._execute_query("SELECT * FROM Palabra")
-
-    def get_usuario(self):
-        return self._execute_query("SELECT * FROM Usuario")
-
-    def get_tema(self):
-        return self._execute_query("SELECT * FROM Tema")
-
-    def get_resultado(self):
-        return self._execute_query("SELECT * FROM Resultado")
-
-    # --- UPDATE/INSERT Methods ---
-    def insert_or_update_usuario(self, id_usuario, id_campus, id_carrera):
-        conn = self._get_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT ID_Usuario FROM Usuario WHERE ID_Usuario = ?", (id_usuario,))
-        if cursor.fetchone():
-            cursor.execute("UPDATE Usuario SET ID_Campus = ?, ID_Carrera = ? WHERE ID_Usuario = ?",
-                           (id_campus, id_carrera, id_usuario))
-        else:
-            cursor.execute("INSERT INTO Usuario (ID_Usuario, ID_Campus, ID_Carrera) VALUES (?, ?, ?)",
-                           (id_usuario, id_campus, id_carrera))
-        conn.commit()
-        conn.close()
-
-    def incrementar_visualizacion(self, id_video):
-        self._execute_commit("UPDATE Video SET Visualizaciones = Visualizaciones + 1 WHERE ID_Video = ?", (id_video,))
-
-    def delete_reaction(self, video_id, user_id):
-        self._execute_commit("DELETE FROM Reaccion WHERE ID_Video = ? AND ID_Usuario = ?", (video_id, user_id))
+    # ==========================================
+    #      MÉTODOS DE ESCRITURA (INSERT/UPDATE)
+    # ==========================================
 
     def insert_reaction(self, reaction_id, video_id, user_id, tipo):
-        self._execute_commit(
-            "INSERT INTO Reaccion (ID_Reaccion, ID_Video, ID_Usuario, Tipo, Fecha, Estado) VALUES (?, ?, ?, ?, date('now'), 'Activo')",
-            (reaction_id, video_id, user_id, tipo))
+        self.db.collection('reacciones').document(reaction_id).set({
+            "id_video": video_id,
+            "id_usuario": user_id,
+            "tipo": tipo,
+            "fecha": firestore.SERVER_TIMESTAMP,
+            "estado": "Activo"
+        })
+        # Actualización atómica de contador
+        if tipo == 'like':
+            self.db.collection('videos').document(video_id) \
+                .update({"cantidad_likes": firestore.Increment(1)})
+        elif tipo == 'dislike':
+            self.db.collection('videos').document(video_id) \
+                .update({"cantidad_dislikes": firestore.Increment(1)})
 
-    def update_video_counter(self, video_id, field, delta):
-        if field in ['Cantidad_Likes', 'Cantidad_Dislikes']:
-            self._execute_commit(
-                f"UPDATE Video SET {field} = MAX(0, {field} + ?) WHERE ID_Video = ?",
-                (delta, video_id)
-            )
+    def delete_reaction(self, video_id, user_id):
+        docs = self.db.collection('reacciones') \
+            .where('id_video', '==', video_id) \
+            .where('id_usuario', '==', user_id).stream()
+
+        for doc in docs:
+            tipo = doc.to_dict().get('tipo')
+            self.db.collection('reacciones').document(doc.id).delete()
+
+            campo = "cantidad_likes" if tipo == "like" else "cantidad_dislikes"
+            self.db.collection('videos').document(video_id) \
+                .update({campo: firestore.Increment(-1)})
+
+    def incrementar_visualizacion(self, id_video):
+        self.db.collection('videos').document(id_video) \
+            .update({"visualizaciones": firestore.Increment(1)})
 
     def add_comment(self, comment_id, video_id, user_id, comment_text):
-        self._execute_commit(
-            "INSERT INTO Comentario (ID_Comentario, Comentario, Fecha, Estado, ID_Usuario, ID_Video) VALUES (?, ?, date('now'), 'Activo', ?, ?)",
-            (comment_id, comment_text, user_id, video_id))
+        self.db.collection('comentarios').document(comment_id).set({
+            "comentario": comment_text,
+            "id_usuario": user_id,
+            "id_video": video_id,
+            "fecha": firestore.SERVER_TIMESTAMP,
+            "estado": "Activo"
+        })
+
+    def insert_or_update_usuario(self, id_usuario, id_campus, id_carrera):
+        self.db.collection('usuarios').document(id_usuario).set({
+            "id_campus": id_campus,
+            "id_carrera": id_carrera
+        }, merge=True)
 
     def guardar_calificacion_por_tema(self, id_usuario, id_tema, calificacion, id_simulador, tiempo, id_resultado,
                                       fecha):
-        conn = self._get_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT ID_Resultado FROM Resultado WHERE ID_Usuario = ? AND ID_Tema = ? AND ID_Simulador = ?",
-                       (id_usuario, id_tema, id_simulador))
-        if cursor.fetchone():
-            cursor.execute(
-                "UPDATE Resultado SET Calificacion = ?, Tiempo = ?, Fecha = ? WHERE ID_Usuario = ? AND ID_Tema = ? AND ID_Simulador = ?",
-                (calificacion, tiempo, fecha, id_usuario, id_tema, id_simulador))
+        self.db.collection('resultados').document(id_resultado).set({
+            "id_usuario": id_usuario,
+            "id_tema": id_tema,
+            "calificacion": calificacion,
+            "id_simulador": id_simulador,
+            "tiempo": tiempo,
+            "fecha": fecha
+        })
+
+    def get_campus_by_id(self, id_campus):
+        # Busca el documento específico por ID
+        doc = self.db.collection('campus').document(id_campus).get()
+        if doc.exists:
+            d = doc.to_dict()
+            # Retornamos estructura compatible con tu main
+            return {"ID_Campus": doc.id, "Nombre": d.get('nombre')}
+        return None
+
+    def get_id_carrera_by_nombre(self, nombre_carrera):
+        # Busca en la colección 'carreras' el documento que tenga ese nombre
+        docs = self.db.collection('carreras') \
+            .where(field_path='nombre', op_string='==', value=nombre_carrera) \
+            .limit(1).stream()
+
+        for doc in docs:
+            return doc.id  # Retorna el ID del documento (ej: "ISO")
+        return None
+
+    def get_carrera_by_id(self, id_carrera):
+        doc = self.db.collection('carreras').document(id_carrera).get()
+        if doc.exists:
+            d = doc.to_dict()
+            # Retornamos el diccionario con 'Nombre' en mayúscula para compatibilidad
+            return {"ID_Carrera": doc.id, "Nombre": d.get('nombre')}
+        return None
+
+    def update_video_counter(self, video_id, field, delta):
+        """
+        Actualiza contadores (Likes, Dislikes, Vistas) de forma atómica.
+        field: Nombre del campo que venía de SQL (ej: 'Cantidad_Likes')
+        delta: +1 o -1
+        """
+        # Mapeo de nombres de columnas SQL a campos Firestore (minúsculas)
+        mapa_campos = {
+            "Cantidad_Likes": "cantidad_likes",
+            "Cantidad_Dislikes": "cantidad_dislikes",
+            "Visualizaciones": "visualizaciones"
+        }
+
+        # Obtenemos el nombre correcto en Firestore
+        campo_firestore = mapa_campos.get(field)
+
+        if campo_firestore:
+            self.db.collection('videos').document(video_id).update({
+                campo_firestore: firestore.Increment(delta)
+            })
         else:
-            cursor.execute(
-                "INSERT INTO Resultado (ID_Resultado, Calificacion, Tiempo, Fecha, ID_Tema, ID_Usuario, ID_Simulador) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (id_resultado, calificacion, tiempo, fecha, id_tema, id_usuario, id_simulador))
-        conn.commit()
-        conn.close()
+            print(f"ERROR: Campo desconocido para contador: {field}")
 
-    # --- Métodos adicionales para estadísticas ---
-    def get_estadisticas_usuario(self, id_usuario):
-        """Obtiene estadísticas del usuario"""
-        query = """
-        SELECT 
-            COUNT(DISTINCT r.ID_Simulador) as simuladores_completados,
-            AVG(r.Calificacion) as promedio_general,
-            SUM(r.Tiempo) as tiempo_total
-        FROM Resultado r 
-        WHERE r.ID_Usuario = ?
-        """
-        rows = self._execute_query(query, (id_usuario,))
-        return rows[0] if rows else None
+    # --- Métodos de compatibilidad vacíos ---
+    # Estos métodos ya no son necesarios en Firebase o se manejan distinto,
+    # pero los dejo vacíos para que no den error si se llaman por accidente.
+    def _get_connection(self):
+        pass
 
-    def get_progreso_por_area(self, id_usuario, id_carrera):
-        """Obtiene el progreso del usuario por área"""
-        query = """
-        SELECT 
-            a.ID_Area,
-            a.Nombre as nombre_area,
-            COUNT(DISTINCT r.ID_Tema) as temas_completados,
-            COUNT(DISTINCT t.ID_Tema) as total_temas,
-            AVG(r.Calificacion) as promedio_area
-        FROM Area a
-        LEFT JOIN Tema t ON a.ID_Area = t.ID_Area
-        LEFT JOIN Resultado r ON t.ID_Tema = r.ID_Tema AND r.ID_Usuario = ?
-        WHERE a.ID_Carrera = ? AND a.Estado = 'Activo'
-        GROUP BY a.ID_Area, a.Nombre
-        """
-        return self._execute_query(query, (id_usuario, id_carrera))
+    def _ensure_tables_exist_and_populate(self):
+        pass
 
-    def get_historial_simuladores(self, id_usuario):
-        """Obtiene el historial de simuladores del usuario"""
-        query = """
-        SELECT 
-            r.Fecha,
-            s.ID_Simulador,
-            a.Nombre as area,
-            r.Calificacion,
-            r.Tiempo
-        FROM Resultado r
-        JOIN Simulador s ON r.ID_Simulador = s.ID_Simulador
-        JOIN Area a ON s.ID_Area = a.ID_Area
-        WHERE r.ID_Usuario = ?
-        ORDER BY r.Fecha DESC
-        LIMIT 10
-        """
-        return self._execute_query(query, (id_usuario,))
+    def _execute_query(self, query, params=()):
+        return []
 
-    # --- Métodos para limpieza y mantenimiento ---
-    def limpiar_datos_temporales(self):
-        """Limpia datos temporales o antiguos"""
-        # Ejemplo: eliminar reacciones y comentarios de usuarios anónimos antiguos
-        queries = [
-            "DELETE FROM Reaccion WHERE Estado = 'Inactivo'",
-            "DELETE FROM Comentario WHERE Estado = 'Inactivo'",
-            "DELETE FROM Usuario WHERE ID_Usuario NOT IN (SELECT DISTINCT ID_Usuario FROM Resultado) AND ID_Usuario NOT IN (SELECT DISTINCT ID_Usuario FROM Reaccion) AND ID_Usuario NOT IN (SELECT DISTINCT ID_Usuario FROM Comentario)"
-        ]
-
-        conn = self._get_connection()
-        cursor = conn.cursor()
-        for query in queries:
-            try:
-                cursor.execute(query)
-            except Exception as e:
-                print(f"Error en limpieza: {e}")
-        conn.commit()
-        conn.close()
-
-    def backup_database(self, backup_path):
-        """Crea una copia de seguridad de la base de datos"""
-        import shutil
-        try:
-            shutil.copy2(self.db_path, backup_path)
-            return True
-        except Exception as e:
-            print(f"Error en backup: {e}")
-            return False
-
-    # --- Métodos de validación ---
-    def verificar_integridad(self):
-        """Verifica la integridad de la base de datos"""
-        conn = self._get_connection()
-        cursor = conn.cursor()
-
-        # Verificar claves foráneas
-        cursor.execute("PRAGMA foreign_key_check")
-        foreign_key_issues = cursor.fetchall()
-
-        # Verificar integridad de la estructura
-        cursor.execute("PRAGMA integrity_check")
-        integrity_check = cursor.fetchone()[0]
-
-        conn.close()
-
-        return {
-            'integrity_check': integrity_check,
-            'foreign_key_issues': foreign_key_issues,
-            'is_valid': integrity_check == 'ok' and not foreign_key_issues
-        }
-
-    # --- Métodos para administración ---
-    def obtener_estadisticas_globales(self):
-        """Obtiene estadísticas globales del sistema"""
-        queries = {
-            'total_usuarios': "SELECT COUNT(*) as count FROM Usuario",
-            'total_videos': "SELECT COUNT(*) as count FROM Video WHERE Estado = 'Activo'",
-            'total_preguntas': "SELECT COUNT(*) as count FROM Pregunta WHERE Estado = 'Activo'",
-            'total_simuladores': "SELECT COUNT(*) as count FROM Simulador WHERE Estado = 'Activo'",
-            'total_resultados': "SELECT COUNT(*) as count FROM Resultado",
-            'promedio_calificacion': "SELECT AVG(Calificacion) as avg FROM Resultado"
-        }
-
-        stats = {}
-        conn = self._get_connection()
-        cursor = conn.cursor()
-
-        for key, query in queries.items():
-            try:
-                cursor.execute(query)
-                result = cursor.fetchone()
-                stats[key] = result[0] if result[0] is not None else 0
-            except Exception as e:
-                print(f"Error en estadística {key}: {e}")
-                stats[key] = 0
-
-        conn.close()
-        return stats
+    def _execute_commit(self, query, params=()):
+        pass

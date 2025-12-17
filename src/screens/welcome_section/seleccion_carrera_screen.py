@@ -1,4 +1,5 @@
 import flet as ft
+# CORRECCIÓN: Apuntamos al archivo correcto
 from src.database.database import DatabaseHelper
 from src.screens.inicio_screen import InicioScreen
 
@@ -27,6 +28,7 @@ class SeleccionCarreraScreen(ft.Column):
             text_align=ft.TextAlign.CENTER,
         )
 
+        # Ajuste visual: runs_count=2 se ve bien en móviles
         self.carreras_grid = ft.GridView(
             expand=True, runs_count=2, spacing=10, run_spacing=10, child_aspect_ratio=2.0
         )
@@ -42,7 +44,6 @@ class SeleccionCarreraScreen(ft.Column):
             text="Siguiente", disabled=True, on_click=self._on_next_pressed
         )
 
-        # Estructura principal
         self.controls = [
             ft.Container(content=self.title, padding=16),
             self.content_area,
@@ -59,6 +60,7 @@ class SeleccionCarreraScreen(ft.Column):
         self.page.update()
 
     def _fetch_carreras(self):
+        # Esto llamará al método que ya tenías en DatabaseHelper
         carreras_list = self.db_helper.get_nombres_carrera_por_id_campus(self.id_campus)
 
         if not carreras_list:
@@ -91,39 +93,32 @@ class SeleccionCarreraScreen(ft.Column):
             card = card_detector.content
             is_selected = card.data == nombre_carrera
             card.color = ft.Colors.BLUE_900 if is_selected else ft.Colors.WHITE
-            text_widget = card.content.content  # Asumiendo que content es Container(content=Text)
+            text_widget = card.content.content
             text_widget.color = ft.Colors.WHITE if is_selected else ft.Colors.BLACK
         self.next_button.disabled = False
         self.update()
 
     def _on_next_pressed(self, e):
         if self.selected_carrera_nombre:
-            # Obtenemos el ID de la carrera desde la BD
+            # AHORA SÍ funcionará esta línea porque agregamos el método en el Paso 1
             id_carrera = self.db_helper.get_id_carrera_by_nombre(self.selected_carrera_nombre)
 
-            # --- AÑADIDA LÍNEA PARA DEPURAR ---
-            print(
-                f"\n--- DEBUG (Carrera): Obtenido id_carrera='{id_carrera}' para el nombre '{self.selected_carrera_nombre}' ---")
-            # --- FIN DE LA LÍNEA DE DEPURACIÓN ---
+            print(f"DEBUG: Nombre '{self.selected_carrera_nombre}' -> ID '{id_carrera}'")
 
-            # Verificamos si el ID es válido antes de continuar
             if not id_carrera:
-                print(
-                    f"--- DEBUG ERROR (Carrera): No se encontró ID para la carrera '{self.selected_carrera_nombre}' ---")
                 self.page.snack_bar = ft.SnackBar(
-                    ft.Text(f"Error: No se pudo encontrar el ID para {self.selected_carrera_nombre}"))
+                    ft.Text(f"Error: No se pudo sincronizar la carrera {self.selected_carrera_nombre} con la nube."))
                 self.page.snack_bar.open = True
                 self.page.update()
-                return  # Detenemos la navegación
+                return
 
-            # Guarda el ID en el almacenamiento del cliente
+            # Guardamos y navegamos
             self.page.client_storage.set("idCarrera", id_carrera)
-            print(f"ID de Carrera guardado: {id_carrera}")
 
-            # Navegamos a la pantalla de inicio
             self.page.appbar = None
             self.page.clean()
+            # Pasamos los IDs necesarios a la pantalla de Inicio
             self.page.add(InicioScreen(self.page, id_campus=self.id_campus, id_carrera=id_carrera))
             self.page.update()
         else:
-            print("--- DEBUG WARNING (Carrera): Se presionó Siguiente sin seleccionar carrera ---")
+            print("WARNING: Intento de avanzar sin selección")
