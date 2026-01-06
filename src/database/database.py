@@ -5,7 +5,7 @@ import random
 import datetime
 
 # --- CONFIGURACIÓN DE CONEXIÓN ---
-# Verificamos si ya está inicializado para evitar errores al recargar Flet
+
 if not firebase_admin._apps:
     # Ajustamos la ruta para buscar credenciales.json en la misma carpeta que este archivo
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -15,7 +15,7 @@ if not firebase_admin._apps:
         cred = credentials.Certificate(cred_path)
         firebase_admin.initialize_app(cred)
     else:
-        print(f"⚠️ ERROR: No se encontró el archivo {cred_path}")
+        print(f"ERROR: No se encontró el archivo {cred_path}")
 
 
 class DatabaseHelper:

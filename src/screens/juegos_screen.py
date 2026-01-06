@@ -48,6 +48,6 @@ class JuegosScreen(ft.Column):
         self.page.clean()
         self.page.add(SeleccionarSopaScreen(self.page, id_carrera=self.id_carrera))
 
-    #def go_to_palabreta(self, e):
+    #def go_to_palabreta(self, e): Palabreta de añadirá en un futuro junto a otros juegos
         #self.page.clean()
         #self.page.add(SeleccionarCrucigramaScreen(self.page, id_carrera=self.id_carrera))
